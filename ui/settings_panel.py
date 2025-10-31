@@ -76,13 +76,6 @@ class SettingsPanel(QWidget):
         grid2.addWidget(voice_box, 1, 1, 1, 1)
         root.addWidget(row2)
 
-        # Dòng 2b: Whisk Session Token (Cookie-based auth for upload)
-        row2b = QHBoxLayout()
-        session_init = self.state.get('session_tokens') or []
-        self.w_session = KeyList(title='Whisk Session Token (Cookie)', kind='session', initial=session_init)
-        row2b.addWidget(self.w_session)
-        root.addLayout(row2b)
-
         # Dòng 3: Google API | OpenAI API
         row3 = _QW(); grid3 = QGridLayout(row3); grid3.setHorizontalSpacing(12); grid3.setVerticalSpacing(6)
         g_list = self.state.get('google_api_keys') or ([] if not self.state.get('google_api_key') else [self.state.get('google_api_key')])
@@ -91,7 +84,17 @@ class SettingsPanel(QWidget):
         grid3.addWidget(self.w_google, 0, 0, 1, 1); grid3.addWidget(self.w_openai, 0, 1, 1, 1)
         root.addWidget(row3)
 
-        # Dòng 4: Thư mục tải về
+        # Dòng 4: Whisk Token | Download Directory (2 columns, 50/50)
+        row_combined = _QW()
+        grid_combined = QGridLayout(row_combined)
+        grid_combined.setHorizontalSpacing(12)
+        
+        # Left column: Whisk Session Token
+        session_init = self.state.get('session_tokens') or []
+        self.w_session = KeyList(title='Whisk Session Token (Cookie)', kind='session', initial=session_init)
+        grid_combined.addWidget(self.w_session, 0, 0, 1, 1)
+        
+        # Right column: Download directory group
         st = QGroupBox('Thư mục tải về'); _decorate_group(st)
         gs = QGridLayout(st); gs.setVerticalSpacing(6)
         self.rb_local = QRadioButton('Lưu tại Local'); self.rb_drive = QRadioButton('Google Drive')
@@ -106,7 +109,9 @@ class SettingsPanel(QWidget):
         self.ed_oauth  = _line('Google Workspace OAuth Token'); self.ed_oauth.setText(self.state.get('google_workspace_oauth_token',''))
         gs.addWidget(_lab('Folder ID (Drive):'), 2, 0); gs.addWidget(self.ed_gdrive, 2, 1)
         gs.addWidget(_lab('OAuth Token:'), 2, 2); gs.addWidget(self.ed_oauth, 2, 3)
-        root.addWidget(st)
+        grid_combined.addWidget(st, 0, 1, 1, 1)
+        
+        root.addWidget(row_combined)
 
         self.rb_local.toggled.connect(self._toggle_storage_fields)
         self.rb_drive.toggled.connect(self._toggle_storage_fields)

@@ -209,13 +209,16 @@ class ImageGenerationWorker(QThread):
                 # Fallback to Gemini
                 if img_data is None:
                     try:
-                        # FIXED: 10-second delay for rate limiting
-                        delay = 10.0 if i > 0 else 0
+                        # FIXED: 10-second delay BEFORE every request (except first)
+                        if i > 0:
+                            self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo ảnh cảnh {scene.get('index')}...")
+                            time.sleep(10.0)
+                        
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
                         
                         img_data = image_gen_service.generate_image_with_rate_limit(
                             prompt, 
-                            delay, 
+                            delay_before=0,  # No additional delay needed
                             log_callback=lambda msg: self.progress.emit(msg)
                         )
                         
@@ -243,11 +246,14 @@ class ImageGenerationWorker(QThread):
                 text_overlay = version.get("thumbnail_text_overlay", "")
                 
                 try:
-                    # FIXED: 10-second delay
-                    delay = 10.0 if (len(scenes) + i) > 0 else 0
+                    # FIXED: 10-second delay for thumbnails (after all scenes)
+                    # Always add delay for thumbnails since scenes were generated before
+                    self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo thumbnail phiên bản {i+1}...")
+                    time.sleep(10.0)
+                    
                     thumb_data = image_gen_service.generate_image_with_rate_limit(
                         prompt, 
-                        delay,
+                        delay_before=0,  # No additional delay needed
                         log_callback=lambda msg: self.progress.emit(msg)
                     )
                     
