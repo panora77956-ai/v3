@@ -5,7 +5,7 @@ ModelSelectorWidget - Collapsible widget for selecting 0-5 models
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QFrame, QScrollArea, QFileDialog, QTextEdit, QGroupBox,
-    QSizePolicy
+    QSizePolicy, QMessageBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QFont
@@ -251,7 +251,6 @@ class ModelSelectorWidget(QGroupBox):
     def _add_model(self):
         """Add a new model row"""
         if len(self.model_rows) >= 5:
-            from PyQt5.QtWidgets import QMessageBox
             QMessageBox.warning(self, "Giới hạn", "Tối đa 5 người mẫu!")
             return
         

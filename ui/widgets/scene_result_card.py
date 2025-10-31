@@ -4,7 +4,7 @@ SceneResultCard Widget - Compact card with 50% image size
 """
 from PyQt5.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, 
-    QFrame, QTextEdit, QDialog, QApplication
+    QFrame, QTextEdit, QDialog, QApplication, QMessageBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QFont
@@ -211,7 +211,6 @@ class SceneResultCard(QFrame):
         """Copy text to clipboard"""
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
-        from PyQt5.QtWidgets import QMessageBox
         QMessageBox.information(self, "Thành công", "Đã copy vào clipboard!")
     
     def set_image(self, image_bytes):

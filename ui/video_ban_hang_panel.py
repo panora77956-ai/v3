@@ -310,7 +310,6 @@ class VideoBanHangPanel(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.model_rows = []
         self.prod_paths = []
         self.last_outline = None
         self.scene_images = {}
