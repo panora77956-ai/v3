@@ -34,6 +34,9 @@ FONT_INPUT.setPixelSize(12)
 THUMBNAIL_SIZE = 60
 MODEL_IMG = 128
 
+# Rate limiting
+RATE_LIMIT_DELAY_SEC = 10.0  # Delay between image generation requests to avoid 429 errors
+
 
 class SceneCardWidget(QFrame):
     """Scene card widget with image preview and action buttons"""
@@ -182,6 +185,11 @@ class ImageGenerationWorker(QThread):
             for i, scene in enumerate(scenes):
                 if self.should_stop:
                     break
+                
+                # CRITICAL FIX: Add delay BEFORE every request (except first)
+                if i > 0:
+                    self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước khi tạo ảnh cảnh {scene.get('index')}...")
+                    time.sleep(RATE_LIMIT_DELAY_SEC)
                     
                 self.progress.emit(f"Tạo ảnh cảnh {scene.get('index')}...")
                 
@@ -209,16 +217,12 @@ class ImageGenerationWorker(QThread):
                 # Fallback to Gemini
                 if img_data is None:
                     try:
-                        # FIXED: 10-second delay BEFORE every request (except first)
-                        if i > 0:
-                            self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo ảnh cảnh {scene.get('index')}...")
-                            time.sleep(10.0)
-                        
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
                         
+                        # Rate limit delay already applied at start of loop iteration
                         img_data = image_gen_service.generate_image_with_rate_limit(
                             prompt, 
-                            delay_before=0,  # No additional delay needed
+                            delay_before=0,
                             log_callback=lambda msg: self.progress.emit(msg)
                         )
                         
@@ -246,14 +250,14 @@ class ImageGenerationWorker(QThread):
                 text_overlay = version.get("thumbnail_text_overlay", "")
                 
                 try:
-                    # FIXED: 10-second delay for thumbnails (after all scenes)
+                    # FIXED: Delay for thumbnails (after all scenes)
                     # Always add delay for thumbnails since scenes were generated before
-                    self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo thumbnail phiên bản {i+1}...")
-                    time.sleep(10.0)
+                    self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước khi tạo thumbnail phiên bản {i+1}...")
+                    time.sleep(RATE_LIMIT_DELAY_SEC)
                     
                     thumb_data = image_gen_service.generate_image_with_rate_limit(
                         prompt, 
-                        delay_before=0,  # No additional delay needed
+                        delay_before=0,  # Rate limit delay already applied above
                         log_callback=lambda msg: self.progress.emit(msg)
                     )
                     

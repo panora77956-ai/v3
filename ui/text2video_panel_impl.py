@@ -155,10 +155,12 @@ class _Worker(QObject):
         )
         # auto-save to folders
         st = cfg.load()
-        root = st.get("download_dir") or ""
+        root = st.get("download_root") or ""
         if not root:
-            self.log.emit("[WARN] Chưa cấu hình thư mục tải về trong Cài đặt.")
+            root = os.path.join(os.path.expanduser("~"), "Downloads")
+            self.log.emit("[WARN] Chưa cấu hình thư mục tải về trong Cài đặt, dùng Downloads mặc định.")
         title = p["project"] or data.get("title_vi") or data.get("title_tgt") or "Project"
+        os.makedirs(root, exist_ok=True)
         prj_dir = os.path.join(root, title); os.makedirs(prj_dir, exist_ok=True)
         dir_script = os.path.join(prj_dir, "01_KichBan"); os.makedirs(dir_script, exist_ok=True)
         dir_prompts= os.path.join(prj_dir, "02_Prompts"); os.makedirs(dir_prompts, exist_ok=True)
@@ -233,11 +235,22 @@ class _Worker(QObject):
         for _ in range(120):
             if not jobs:
                 break
-            names=[op for (_,op) in jobs]
+            # Extract all operation names from all jobs
+            names = []
+            for (_, job_dict) in jobs:
+                names.extend(job_dict.get("operation_names", []))
             rs = client.batch_check_operations(names)
             new_jobs=[]
-            for (card, op) in jobs:
-                v = rs.get(op) or {}
+            for (card, job_dict) in jobs:
+                # Get the first operation name for this job
+                op_names = job_dict.get("operation_names", [])
+                if not op_names:
+                    new_jobs.append((card, job_dict))
+                    continue
+                
+                # Check status of first operation (for single copy jobs, there's only one)
+                op_name = op_names[0]
+                v = rs.get(op_name) or {}
                 stt = v.get('status') or 'PROCESSING'
                 card['status']=stt
                 self.job_card.emit(card)
@@ -252,7 +265,7 @@ class _Worker(QObject):
                             if th: card['thumb']=th
                             self.job_card.emit(card)
                 else:
-                    new_jobs.append((card, op))
+                    new_jobs.append((card, job_dict))
             jobs=new_jobs
             try:
                 import time; time.sleep(5)
