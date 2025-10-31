@@ -99,17 +99,80 @@ def _call_openai(prompt, api_key, model="gpt-4-turbo"):
     return json.loads(txt)
 
 def _call_gemini(prompt, api_key, model="gemini-2.5-flash"):
+    """
+    Call Gemini API with retry logic for 503 errors
+    
+    Strategy:
+    1. Try primary API key
+    2. If 503 error, try up to 2 additional keys from config
+    3. Add exponential backoff (1s, 2s, 4s)
+    """
     from services.core.api_config import gemini_text_endpoint
-    url=gemini_text_endpoint(api_key) if model == "gemini-2.5-flash" else f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    headers={"Content-Type":"application/json"}
-    data={
-        "contents":[{"role":"user","parts":[{"text":prompt}]}],
-        "generationConfig":{"temperature":0.9,"response_mime_type":"application/json"}
-    }
-    r=requests.post(url,headers=headers,json=data,timeout=240); r.raise_for_status()
-    out=r.json()
-    txt=out["candidates"][0]["content"]["parts"][0]["text"]
-    return json.loads(txt)
+    from services.core.key_manager import get_all_keys
+    import time
+    
+    # Build key rotation list
+    keys = [api_key]
+    all_keys = get_all_keys('google')
+    keys.extend([k for k in all_keys if k != api_key])
+    
+    last_error = None
+    
+    for attempt, key in enumerate(keys[:3]):  # Try up to 3 keys
+        try:
+            # Build endpoint
+            url = gemini_text_endpoint(key) if model == "gemini-2.5-flash" else \
+                  f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+            
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.9, "response_mime_type": "application/json"}
+            }
+            
+            # Make request
+            r = requests.post(url, headers=headers, json=data, timeout=240)
+            
+            # Check for 503 specifically
+            if r.status_code == 503:
+                last_error = requests.HTTPError(f"503 Service Unavailable (Key attempt {attempt+1})", response=r)
+                if attempt < 2:  # Don't sleep on last attempt
+                    backoff = 2 ** attempt  # 1s, 2s, 4s
+                    print(f"[WARN] Gemini 503 error, retrying in {backoff}s with next key...")
+                    time.sleep(backoff)
+                continue  # Try next key
+            
+            # Raise for other HTTP errors
+            r.raise_for_status()
+            
+            # Parse response
+            out = r.json()
+            txt = out["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(txt)
+            
+        except requests.exceptions.HTTPError as e:
+            # Only retry 503 errors
+            if hasattr(e, 'response') and e.response.status_code == 503:
+                last_error = e
+                if attempt < 2:
+                    backoff = 2 ** attempt
+                    print(f"[WARN] HTTP 503, trying key {attempt+2}/{min(3, len(keys))} in {backoff}s...")
+                    time.sleep(backoff)
+                continue
+            else:
+                # Other HTTP errors (429, 400, 401, etc.) - raise immediately
+                raise
+                
+        except Exception as e:
+            # Non-HTTP errors - raise immediately
+            last_error = e
+            raise
+    
+    # All retries exhausted
+    if last_error:
+        raise RuntimeError(f"Gemini API failed after {min(3, len(keys))} attempts: {last_error}")
+    else:
+        raise RuntimeError("Gemini API failed with unknown error")
 
 def generate_script(idea, style, duration_seconds, provider='Gemini 2.5', api_key=None, output_lang='vi'):
     gk, ok=_load_keys()
