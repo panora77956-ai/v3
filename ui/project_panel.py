@@ -207,8 +207,8 @@ class ProjectPanel(QWidget):
         lv.addWidget(QLabel("Dự án"))
         rowm=QHBoxLayout()
         self.ed_name=QLineEdit(self.project_name); self.ed_name.setReadOnly(True)
-        self.btn_del_scene=QPushButton("Xóa cảnh đã chọn"); self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
-        self.btn_del_all=QPushButton("Xóa tất cả cảnh"); self.btn_del_all.clicked.connect(self._delete_all_scenes)
+        self.btn_del_scene=QPushButton("Xóa cảnh đã chọn"); self.btn_del_scene.setObjectName('btn_delete_xoa'); self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
+        self.btn_del_all=QPushButton("Xóa tất cả cảnh"); self.btn_del_all.setObjectName('btn_delete_xoa_all'); self.btn_del_all.clicked.connect(self._delete_all_scenes)
         rowm.addWidget(self.ed_name,1); lv.addLayout(rowm)
         rowx=QHBoxLayout(); rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
 
@@ -239,24 +239,24 @@ class ProjectPanel(QWidget):
         # Prompt: nhập hoặc nạp file
         lv.addWidget(QLabel("Prompt (nhập hoặc hiển thị từ file)"))
         self.ed_json=QTextEdit(); self.ed_json.setMinimumHeight(120); lv.addWidget(self.ed_json)
-        rowp=QHBoxLayout(); btn_prompt=QPushButton("Chọn file prompt"); btn_prompt.clicked.connect(self._pick_prompt_file); rowp.addWidget(btn_prompt); lv.addLayout(rowp)
+        rowp=QHBoxLayout(); btn_prompt=QPushButton("Chọn file prompt"); btn_prompt.setObjectName('btn_import_nhap'); btn_prompt.clicked.connect(self._pick_prompt_file); rowp.addWidget(btn_prompt); lv.addLayout(rowp)
 
         # Ảnh: chọn thư mục hoặc chọn từng ảnh
         lv.addWidget(QLabel("Ảnh tham chiếu"))
         rowi=QHBoxLayout()
-        btn_img_dir=QPushButton("Chọn thư mục ảnh"); btn_img_dir.clicked.connect(self._pick_image_dir); rowi.addWidget(btn_img_dir)
-        btn_imgs=QPushButton("Chọn ảnh lẻ"); btn_imgs.clicked.connect(self._pick_images_multi); rowi.addWidget(btn_imgs)
+        btn_img_dir=QPushButton("Chọn thư mục ảnh"); btn_img_dir.setObjectName('btn_import_nhap_dir'); btn_img_dir.clicked.connect(self._pick_image_dir); rowi.addWidget(btn_img_dir)
+        btn_imgs=QPushButton("Chọn ảnh lẻ"); btn_imgs.setObjectName('btn_import_nhap_imgs'); btn_imgs.clicked.connect(self._pick_images_multi); rowi.addWidget(btn_imgs)
         lv.addLayout(rowi)
 
         # Nút lớn bắt đầu
         self.btn_run=QPushButton("BẮT ĐẦU TẠO VIDEO"); self.btn_run.setMinimumHeight(46)
-        self.btn_run.setStyleSheet("QPushButton{background:#1976d2;color:white;font-weight:700;font-size:17px;border-radius:8px;padding:12px;} QPushButton:hover{background:#1e88e5;}")
+        self.btn_run.setObjectName('btn_run_primary')
         self.btn_run.clicked.connect(self._run_seq)
         lv.addWidget(self.btn_run)
 
         self.btn_run_all=QPushButton("CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
         self.btn_run_all.setMinimumHeight(46)
-        self.btn_run_all.setStyleSheet("QPushButton{background:#43a047;color:white;font-weight:700;font-size:16px;border-radius:8px;padding:12px;} QPushButton:hover{background:#2e7d32;}")
+        self.btn_run_all.setObjectName('btn_success_run_all')
         self.btn_run_all.clicked.connect(lambda: self.run_all_requested.emit())
         lv.addWidget(self.btn_run_all)
 

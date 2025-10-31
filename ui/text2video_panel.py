@@ -60,15 +60,15 @@ class Text2VideoPane(QWidget):
         self.cb_model = QComboBox(); self.cb_model.addItems(_VIDEO_MODELS)
         r7.addWidget(self.cb_model,1); colL.addLayout(r7)
 
-        self.chk_up4k = QPushButton("Upscale 4K"); self.chk_up4k.setObjectName("btnToggle"); self.chk_up4k.setCheckable(True); self.chk_up4k.setChecked(False)
+        self.chk_up4k = QPushButton("Upscale 4K"); self.chk_up4k.setObjectName("btn_info_toggle"); self.chk_up4k.setCheckable(True); self.chk_up4k.setChecked(False)
         colL.addWidget(self.chk_up4k)
 
         hb = QHBoxLayout()
-        self.btn_script = QPushButton("Viết kịch bản"); self.btn_script.setObjectName("btnWrite")
-        self.btn_create = QPushButton("Bắt đầu tạo video"); self.btn_create.setObjectName("btnStart")
+        self.btn_script = QPushButton("Viết kịch bản"); self.btn_script.setObjectName("btn_primary_script")
+        self.btn_create = QPushButton("Bắt đầu tạo video"); self.btn_create.setObjectName("btn_success_create")
         hb.addWidget(self.btn_script); hb.addWidget(self.btn_create); colL.addLayout(hb)
 
-        self.btn_open_folder = QPushButton("Mở thư mục dự án"); self.btn_open_folder.setObjectName("btnOpen")
+        self.btn_open_folder = QPushButton("Mở thư mục dự án"); self.btn_open_folder.setObjectName("btn_primary_open")
         colL.addWidget(self.btn_open_folder)
 
         colL.addWidget(QLabel("Console")); self.console = QTextEdit(); self.console.setReadOnly(True); self.console.setMinimumHeight(120)
@@ -132,19 +132,8 @@ class Text2VideoPane(QWidget):
         return '\n'.join(lines)
 
     def _apply_styles(self):
-        self.setStyleSheet("""
-            QLabel{ color:#111827; font-size:14px; font-weight:600; }
-            QTextEdit, QLineEdit, QComboBox, QSpinBox { background:#FFFFFF; color:#111827; border:1px solid #CBD5E1; padding:6px; }
-            QListWidget { background:#FFFFFF; color:#111827; border:1px solid #CBD5E1; }
-            QTableWidget { background:#FFFFFF; color:#111827; gridline-color:#CBD5E1; }
-            QPushButton#btnStart { background:#14B8A6; color:#FFFFFF; padding:10px 14px; border-radius:8px; }
-            QPushButton#btnStart:hover { background:#87DAD1; }
-            QPushButton#btnWrite { background:#36D1BE; color:#FFFFFF; padding:10px 14px; border-radius:8px; }
-            QPushButton#btnWrite:hover { background:#5D9BCA; }
-            QPushButton#btnOpen { background:#2563EA; color:#FFFFFF; padding:8px 12px; border-radius:8px; }
-            QPushButton#btnToggle:checked { background:#36D1BE; color:#FFFFFF; }
-            QWidget { background:#F9FAFB; color:#111827; }
-        """)
+        # Unified theme v2 handles all styling
+        pass
 
     def _append_log(self, msg):
         self.console.append(msg)

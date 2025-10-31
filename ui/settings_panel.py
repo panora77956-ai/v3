@@ -46,7 +46,7 @@ class SettingsPanel(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(10,10,10,10)
-        root.setSpacing(10)
+        root.setSpacing(6)
 
         # Section: Thông tin tài khoản
         acc = QGroupBox('Thông tin tài khoản'); _decorate_group(acc)
@@ -102,7 +102,7 @@ class SettingsPanel(QWidget):
         (self.rb_drive if storage=='gdrive' else self.rb_local).setChecked(True)
         gs.addWidget(self.rb_local, 0, 0); gs.addWidget(self.rb_drive, 0, 1)
         self.ed_local = _line('Chọn thư mục...'); self.ed_local.setText(self.state.get('download_root',''))
-        self.btn_browse = QPushButton('Chọn...'); self.btn_browse.setStyleSheet('QPushButton{background:#26A69A;color:white;border-radius:8px;padding:6px 10px;}')
+        self.btn_browse = QPushButton('Chọn...'); self.btn_browse.setObjectName('btn_browse')
         self.btn_browse.clicked.connect(self._pick_dir)
         gs.addWidget(_lab('Đường dẫn (Local):'), 1, 0); gs.addWidget(self.ed_local, 1, 1); gs.addWidget(self.btn_browse, 1, 2)
         self.ed_gdrive = _line('Google Drive Folder ID'); self.ed_gdrive.setText(self.state.get('gdrive_folder_id',''))
@@ -120,7 +120,7 @@ class SettingsPanel(QWidget):
         # Dòng 5: Lưu + Info app ở bên phải
         row5 = QHBoxLayout()
         self.btn_save = QPushButton('Lưu cấu hình'); self.btn_save.setFont(FONT_BTN_BIG)
-        self.btn_save.setStyleSheet('QPushButton{background:#FBC02D;color:#1B1B1B;border-radius:10px;padding:10px 16px;} QPushButton:hover{background:#F9A825;}')
+        self.btn_save.setObjectName('btn_save_luu')
         self.lb_saved = QLabel(''); self.lb_saved.setFont(FONT_BTN_BIG)
         row5.addWidget(self.btn_save); row5.addWidget(self.lb_saved); row5.addStretch(1)
 
