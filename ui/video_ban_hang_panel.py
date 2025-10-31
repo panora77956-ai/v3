@@ -182,6 +182,11 @@ class ImageGenerationWorker(QThread):
             for i, scene in enumerate(scenes):
                 if self.should_stop:
                     break
+                
+                # CRITICAL FIX: Add delay BEFORE every request (except first)
+                if i > 0:
+                    self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo ảnh cảnh {scene.get('index')}...")
+                    time.sleep(10.0)
                     
                 self.progress.emit(f"Tạo ảnh cảnh {scene.get('index')}...")
                 
@@ -209,16 +214,12 @@ class ImageGenerationWorker(QThread):
                 # Fallback to Gemini
                 if img_data is None:
                     try:
-                        # FIXED: 10-second delay BEFORE every request (except first)
-                        if i > 0:
-                            self.progress.emit(f"[RATE LIMIT] Chờ 10s trước khi tạo ảnh cảnh {scene.get('index')}...")
-                            time.sleep(10.0)
-                        
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
                         
+                        # NO additional delay here - we already waited above
                         img_data = image_gen_service.generate_image_with_rate_limit(
                             prompt, 
-                            delay_before=0,  # No additional delay needed
+                            delay_before=0,
                             log_callback=lambda msg: self.progress.emit(msg)
                         )
                         
