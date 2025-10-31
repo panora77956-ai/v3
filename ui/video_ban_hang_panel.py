@@ -189,9 +189,8 @@ class ImageGenerationWorker(QThread):
                 # CRITICAL FIX: Add mandatory delay BEFORE every request (except first)
                 # This prevents rate limiting regardless of which key is used
                 if i > 0:
-                    delay_seconds = 10.0
-                    self.progress.emit(f"[RATE LIMIT] Chờ {delay_seconds}s trước khi tạo ảnh cảnh {scene.get('index')}...")
-                    time.sleep(delay_seconds)
+                    self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước khi tạo ảnh cảnh {scene.get('index')}...")
+                    time.sleep(RATE_LIMIT_DELAY_SEC)
                 
                 self.progress.emit(f"Tạo ảnh cảnh {scene.get('index')}...")
                 
@@ -248,9 +247,8 @@ class ImageGenerationWorker(QThread):
                 
                 # CRITICAL FIX: Delay before thumbnails too
                 # First thumbnail comes after all scene images, so always delay
-                delay_seconds = 10.0
-                self.progress.emit(f"[RATE LIMIT] Chờ {delay_seconds}s trước thumbnail {i+1}...")
-                time.sleep(delay_seconds)
+                self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước thumbnail {i+1}...")
+                time.sleep(RATE_LIMIT_DELAY_SEC)
                 
                 self.progress.emit(f"Tạo thumbnail phiên bản {i+1}...")
                 

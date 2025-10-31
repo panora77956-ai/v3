@@ -105,7 +105,7 @@ def _call_gemini(prompt, api_key, model="gemini-2.5-flash"):
     Strategy:
     1. Try primary API key
     2. If 503 error, try up to 2 additional keys from config
-    3. Add exponential backoff (2s, 4s, 8s)
+    3. Add exponential backoff (1s, 2s, 4s)
     """
     from services.core.api_config import gemini_text_endpoint
     from services.core.key_manager import get_all_keys
