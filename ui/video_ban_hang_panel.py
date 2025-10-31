@@ -21,7 +21,8 @@ from services import sales_video_service as svc
 from services import sales_script_service as sscript
 from services import image_gen_service
 from services.gemini_client import MissingAPIKey
-from ui.widgets.scene_card import SceneCard
+from ui.widgets.scene_result_card import SceneResultCard
+from ui.widgets.model_selector import ModelSelectorWidget
 from ui.workers.script_worker import ScriptWorker
 
 # Fonts
@@ -305,7 +306,7 @@ class ImageGenerationWorker(QThread):
 
 
 class VideoBanHangPanel(QWidget):
-    """Redesigned Video Bán Hàng panel with 3-step workflow"""
+    """Redesigned Video Bán Hàng panel with 3-step workflow + cache system"""
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -314,6 +315,14 @@ class VideoBanHangPanel(QWidget):
         self.last_outline = None
         self.scene_images = {}
         self.thumbnail_images = {}
+        
+        # Cache system to persist data across workflow steps
+        self.cache = {
+            'outline': None,
+            'scene_images': {},
+            'scene_prompts': {},
+            'thumbnails': {},
+        }
         
         self._build_ui()
     
@@ -385,30 +394,9 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(gb_proj)
         
-        # Model info with thumbnails
-        gb_models = self._create_group("Thông tin người mẫu")
-        mv = QVBoxLayout(gb_models)
-        
-        lbl = QLabel("Mô tả người mẫu:")
-        lbl.setFont(FONT_LABEL)
-        mv.addWidget(lbl)
-        
-        self.ed_model_desc = QPlainTextEdit()
-        self.ed_model_desc.setFont(FONT_INPUT)
-        self.ed_model_desc.setMaximumHeight(80)
-        self.ed_model_desc.setPlaceholderText("Mô tả chi tiết (JSON hoặc text)")
-        mv.addWidget(self.ed_model_desc)
-        
-        btn_model = QPushButton("📁 Chọn ảnh người mẫu")
-        btn_model.setObjectName('btn_import_nhap_model')
-        btn_model.clicked.connect(self._pick_model_images)
-        mv.addWidget(btn_model)
-        
-        self.model_thumb_container = QHBoxLayout()
-        self.model_thumb_container.setSpacing(4)
-        mv.addLayout(self.model_thumb_container)
-        
-        layout.addWidget(gb_models)
+        # Model selector widget (0-5 models with image + JSON)
+        self.model_selector = ModelSelectorWidget("Thông tin người mẫu")
+        layout.addWidget(self.model_selector)
         
         # Product images
         gb_prod = self._create_group("Ảnh sản phẩm")
@@ -538,14 +526,14 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(self.results_tabs, 3)
         
-        # Log area
+        # Log area (reduced to 75px - 50% of original)
         gb_log = QGroupBox("Nhật ký xử lý")
         
         lv = QVBoxLayout(gb_log)
         self.ed_log = QPlainTextEdit()
         self.ed_log.setFont(FONT_INPUT)
         self.ed_log.setReadOnly(True)
-        self.ed_log.setMaximumHeight(150)
+        self.ed_log.setMaximumHeight(75)
         lv.addWidget(self.ed_log)
         
         layout.addWidget(gb_log, 1)
@@ -593,18 +581,21 @@ class VideoBanHangPanel(QWidget):
         return scroll
     
     def _build_thumbnail_tab(self):
-        """Build thumbnail tab"""
+        """Build thumbnail tab with horizontal layout"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
         container = QWidget()
-        layout = QVBoxLayout(container)
+        # Changed from QVBoxLayout to QHBoxLayout for horizontal display
+        layout = QHBoxLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setSpacing(16)
         
         self.thumbnail_widgets = []
         for i in range(3):
             version_card = QGroupBox(f"Phiên bản {i+1}")
+            version_card.setMinimumWidth(290)
             
             card_layout = QVBoxLayout(version_card)
             
@@ -622,48 +613,36 @@ class VideoBanHangPanel(QWidget):
         return scroll
     
     def _build_social_tab(self):
-        """Build social media tab"""
+        """Build social media tab with combined caption + hashtags"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setSpacing(16)
         
         self.social_version_widgets = []
         for i in range(3):
-            version_card = QGroupBox(f"Phiên bản {i+1}")
+            version_card = QGroupBox(f"=== Phiên bản {i+1} ===")
             
             card_layout = QVBoxLayout(version_card)
             
-            lbl_caption = QLabel("Caption:")
-            lbl_caption.setFont(QFont("Segoe UI", 12, QFont.Bold))
-            card_layout.addWidget(lbl_caption)
+            # Combined text area for caption + hashtags
+            ed_combined = QTextEdit()
+            ed_combined.setReadOnly(True)
+            ed_combined.setMinimumHeight(120)
+            ed_combined.setPlaceholderText("Caption và hashtags sẽ hiển thị ở đây sau khi tạo kịch bản")
+            card_layout.addWidget(ed_combined)
             
-            ed_caption = QTextEdit()
-            ed_caption.setMaximumHeight(100)
-            ed_caption.setReadOnly(True)
-            card_layout.addWidget(ed_caption)
-            
-            btn_copy = QPushButton("📋 Copy Caption")
+            btn_copy = QPushButton("📋 Copy toàn bộ")
             btn_copy.setObjectName('btn_info_copy_caption')
-            btn_copy.clicked.connect(lambda _, e=ed_caption: self._copy_to_clipboard(e.toPlainText()))
+            btn_copy.clicked.connect(lambda _, e=ed_combined: self._copy_to_clipboard(e.toPlainText()))
             card_layout.addWidget(btn_copy)
-            
-            lbl_hashtags = QLabel("Hashtags:")
-            lbl_hashtags.setFont(QFont("Segoe UI", 12, QFont.Bold))
-            card_layout.addWidget(lbl_hashtags)
-            
-            ed_hashtags = QTextEdit()
-            ed_hashtags.setMaximumHeight(60)
-            ed_hashtags.setReadOnly(True)
-            card_layout.addWidget(ed_hashtags)
             
             self.social_version_widgets.append({
                 'widget': version_card,
-                'caption': ed_caption,
-                'hashtags': ed_hashtags
+                'combined': ed_combined
             })
             
             layout.addWidget(version_card)
@@ -682,17 +661,7 @@ class VideoBanHangPanel(QWidget):
         n = max(1, math.ceil(self.sp_duration.value() / 8.0))
         self.lb_scenes.setText(f"Số cảnh: {n}")
     
-    def _pick_model_images(self):
-        """Pick model images"""
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Chọn ảnh người mẫu", "", 
-            "Images (*.png *.jpg *.jpeg *.webp)"
-        )
-        if not files:
-            return
-        
-        self.model_rows = files
-        self._refresh_model_thumbnails()
+
     
     def _pick_product_images(self):
         """Pick product images"""
@@ -705,34 +674,6 @@ class VideoBanHangPanel(QWidget):
         
         self.prod_paths = files
         self._refresh_product_thumbnails()
-    
-    def _refresh_model_thumbnails(self):
-        """Refresh model thumbnails"""
-        while self.model_thumb_container.count():
-            item = self.model_thumb_container.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        
-        max_show = 5
-        for i, path in enumerate(self.model_rows[:max_show]):
-            thumb = QLabel()
-            thumb.setFixedSize(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-            thumb.setScaledContents(True)
-            thumb.setPixmap(QPixmap(path).scaled(
-                THUMBNAIL_SIZE, THUMBNAIL_SIZE, 
-                Qt.KeepAspectRatio, Qt.SmoothTransformation
-            ))
-            thumb.setStyleSheet("border: 1px solid #90CAF9;")
-            self.model_thumb_container.addWidget(thumb)
-        
-        if len(self.model_rows) > max_show:
-            extra = QLabel(f"+{len(self.model_rows) - max_show}")
-            extra.setFixedSize(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-            extra.setAlignment(Qt.AlignCenter)
-            extra.setStyleSheet("border: 1px dashed #666; font-weight: bold;")
-            self.model_thumb_container.addWidget(extra)
-        
-        self.model_thumb_container.addStretch(1)
     
     def _refresh_product_thumbnails(self):
         """Refresh product thumbnails"""
@@ -764,6 +705,19 @@ class VideoBanHangPanel(QWidget):
     
     def _collect_cfg(self):
         """Collect configuration"""
+        # Get models from ModelSelectorWidget
+        models = self.model_selector.get_models()
+        model_paths = [m['image_path'] for m in models if m.get('image_path')]
+        
+        # For backward compatibility, use first model's JSON if available
+        first_model_json = ""
+        if models and models[0].get('data'):
+            import json
+            try:
+                first_model_json = json.dumps(models[0]['data'], ensure_ascii=False)
+            except:
+                first_model_json = str(models[0]['data'])
+        
         return {
             "project_name": (self.ed_name.text() or '').strip() or svc.default_project_name(),
             "idea": self.ed_idea.toPlainText(),
@@ -778,8 +732,10 @@ class VideoBanHangPanel(QWidget):
             "ratio": self.cb_ratio.currentText(),
             "speech_lang": self.cb_lang.currentText(),
             "social_platform": self.cb_social.currentText(),
-            "first_model_json": self.ed_model_desc.toPlainText(),
+            "first_model_json": first_model_json,
             "product_count": len(self.prod_paths),
+            "models": models,
+            "model_paths": model_paths,
         }
     
     def _append_log(self, msg):
@@ -810,27 +766,42 @@ class VideoBanHangPanel(QWidget):
         self.script_worker.start()
     
     def _on_script_done(self, outline):
-        """Script done"""
+        """Script done - with cache system"""
         try:
             self.last_outline = outline
+            
+            # Cache outline
+            self.cache['outline'] = outline
+            
+            # Cache scene prompts
+            for scene in outline.get('scenes', []):
+                scene_idx = scene.get('index', 0)
+                self.cache['scene_prompts'][scene_idx] = {
+                    'video': scene.get('prompt_video'),
+                    'image': scene.get('prompt_image'),
+                    'speech': scene.get('speech')
+                }
             
             social_media = outline.get("social_media", {})
             versions = social_media.get("versions", [])
             
+            # Update social tab with combined format
             for i, version in enumerate(versions[:3]):
                 if i < len(self.social_version_widgets):
                     widget_data = self.social_version_widgets[i]
                     
                     caption = version.get("caption", "")
-                    widget_data['caption'].setPlainText(caption)
-                    
                     hashtags = " ".join(version.get("hashtags", []))
-                    widget_data['hashtags'].setPlainText(hashtags)
+                    
+                    # Combined format
+                    combined_text = f"=== Phiên bản {i+1} ===\n\n{caption}\n\n{hashtags}\n\n{'=' * 40}"
+                    widget_data['combined'].setPlainText(combined_text)
             
             self._display_scene_cards(outline.get("scenes", []))
             
             self._append_log(f"✓ Tạo kịch bản thành công ({len(outline.get('scenes', []))} cảnh)")
             self._append_log(f"✓ Tạo {len(versions)} phiên bản social media")
+            self._append_log(f"✓ Đã cache kịch bản và {len(self.cache['scene_prompts'])} prompts")
             
             self.btn_images.setEnabled(True)
             
@@ -853,7 +824,7 @@ class VideoBanHangPanel(QWidget):
         self.btn_script.setText("📝 Viết kịch bản")
     
     def _display_scene_cards(self, scenes):
-        """Display scene cards"""
+        """Display scene cards with SceneResultCard and alternating colors"""
         while self.scenes_layout.count() > 1:
             item = self.scenes_layout.takeAt(0)
             if item.widget():
@@ -865,28 +836,33 @@ class VideoBanHangPanel(QWidget):
         for i, scene in enumerate(scenes):
             scene_idx = scene.get('index', i + 1)
             
-            card = SceneCard(i, scene)
+            # Use SceneResultCard with alternating colors
+            card = SceneResultCard(scene_idx, scene, alternating_color=(i % 2 == 1))
             self.scenes_layout.insertWidget(i, card)
             
             self.scene_cards.append(card)
-            self.scene_images[scene_idx] = {'card': card, 'label': card.img_preview, 'path': None}
+            self.scene_images[scene_idx] = {'card': card, 'path': None}
     
     def _on_generate_images(self):
-        """Generate images"""
-        if not self.last_outline:
+        """Generate images - with cache validation"""
+        # Validate cache
+        if not self.cache['outline']:
             QMessageBox.warning(self, "Chưa có kịch bản", 
-                              "Vui lòng viết kịch bản trước.")
+                              "Vui lòng viết kịch bản trước. (Cache rỗng)")
             return
         
         cfg = self._collect_cfg()
         use_whisk = (cfg.get("image_model") == "Whisk")
         
+        # Get model paths from ModelSelectorWidget
+        model_paths = cfg.get("model_paths", [])
+        
         self._append_log("Bắt đầu tạo ảnh...")
         self.btn_images.setEnabled(False)
         
         self.img_worker = ImageGenerationWorker(
-            self.last_outline, cfg, 
-            self.model_rows, self.prod_paths,
+            self.cache['outline'], cfg, 
+            model_paths, self.prod_paths,
             use_whisk
         )
         
@@ -898,7 +874,7 @@ class VideoBanHangPanel(QWidget):
         self.img_worker.start()
     
     def _on_scene_image_ready(self, scene_idx, img_data):
-        """Scene image ready"""
+        """Scene image ready - with cache"""
         cfg = self._collect_cfg()
         dirs = svc.ensure_project_dirs(cfg["project_name"])
         img_path = dirs["preview"] / f"scene_{scene_idx}.png"
@@ -906,23 +882,28 @@ class VideoBanHangPanel(QWidget):
         with open(img_path, 'wb') as f:
             f.write(img_data)
         
+        # Cache the image
+        self.cache['scene_images'][scene_idx] = str(img_path)
+        
         if scene_idx in self.scene_images:
             card = self.scene_images[scene_idx].get('card')
             if card:
-                pixmap = QPixmap(str(img_path))
-                card.set_image_pixmap(pixmap)
+                card.set_image_path(str(img_path))
             self.scene_images[scene_idx]['path'] = str(img_path)
         
         self._append_log(f"✓ Ảnh cảnh {scene_idx} đã sẵn sàng")
     
     def _on_thumbnail_ready(self, version_idx, img_data):
-        """Thumbnail ready"""
+        """Thumbnail ready - with cache"""
         cfg = self._collect_cfg()
         dirs = svc.ensure_project_dirs(cfg["project_name"])
         img_path = dirs["preview"] / f"thumbnail_v{version_idx+1}.png"
         
         with open(img_path, 'wb') as f:
             f.write(img_data)
+        
+        # Cache the thumbnail
+        self.cache['thumbnails'][version_idx] = str(img_path)
         
         if version_idx < len(self.thumbnail_widgets):
             widget_data = self.thumbnail_widgets[version_idx]
@@ -944,18 +925,20 @@ class VideoBanHangPanel(QWidget):
         self.btn_images.setEnabled(True)
     
     def _on_generate_video(self):
-        """Generate video"""
-        if not self.last_outline:
+        """Generate video - with cache validation"""
+        # Validate cache
+        if not self.cache['outline']:
             QMessageBox.warning(self, "Chưa có kịch bản", 
-                              "Vui lòng viết kịch bản trước.")
+                              "Vui lòng viết kịch bản trước. (Cache rỗng)")
             return
         
-        if not any(img.get('path') for img in self.scene_images.values()):
-            QMessageBox.warning(self, "Chưa có ảnh", 
-                              "Vui lòng tạo ảnh trước.")
+        if not self.cache['scene_images']:
+            QMessageBox.warning(self, "Chưa có ảnh cảnh", 
+                              "Vui lòng tạo ảnh trước. (Cache chưa có ảnh)")
             return
         
         self._append_log("Bắt đầu tạo video...")
+        self._append_log(f"✓ Sử dụng cache: {len(self.cache['scene_images'])} ảnh cảnh")
         self.btn_video.setEnabled(False)
         
         QMessageBox.information(self, "Thông báo", 
