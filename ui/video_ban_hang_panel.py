@@ -92,15 +92,18 @@ class SceneCardWidget(QFrame):
         
         # Prompt button
         btn_prompt = QPushButton("📝 Prompt ảnh/video")
+        btn_prompt.setObjectName('btn_info_prompt')
         btn_prompt.clicked.connect(self._show_prompts)
         btn_layout.addWidget(btn_prompt)
         
         # Regenerate button
         btn_regen = QPushButton("🔄 Tạo lại")
+        btn_regen.setObjectName('btn_warning_regen')
         btn_layout.addWidget(btn_regen)
         
         # Video button
         btn_video = QPushButton("🎬 Video")
+        btn_video.setObjectName('btn_primary_video')
         btn_layout.addWidget(btn_video)
         
         info_layout.addLayout(btn_layout)
@@ -126,6 +129,7 @@ class SceneCardWidget(QFrame):
         layout.addWidget(ed_img_prompt)
         
         btn_copy_img = QPushButton("📋 Copy Prompt Ảnh")
+        btn_copy_img.setObjectName('btn_info_copy')
         btn_copy_img.clicked.connect(lambda: self._copy_to_clipboard(self.scene_data.get('prompt_image', '')))
         layout.addWidget(btn_copy_img)
         
@@ -140,11 +144,13 @@ class SceneCardWidget(QFrame):
         layout.addWidget(ed_vid_prompt)
         
         btn_copy_vid = QPushButton("📋 Copy Prompt Video")
+        btn_copy_vid.setObjectName('btn_info_copy_vid')
         btn_copy_vid.clicked.connect(lambda: self._copy_to_clipboard(self.scene_data.get('prompt_video', '')))
         layout.addWidget(btn_copy_vid)
         
         # Close button
         btn_close = QPushButton("✖ Đóng")
+        btn_close.setObjectName('btn_primary_close')
         btn_close.clicked.connect(dialog.close)
         layout.addWidget(btn_close)
         
@@ -394,6 +400,7 @@ class VideoBanHangPanel(QWidget):
         mv.addWidget(self.ed_model_desc)
         
         btn_model = QPushButton("📁 Chọn ảnh người mẫu")
+        btn_model.setObjectName('btn_import_nhap_model')
         btn_model.clicked.connect(self._pick_model_images)
         mv.addWidget(btn_model)
         
@@ -408,6 +415,7 @@ class VideoBanHangPanel(QWidget):
         pv = QVBoxLayout(gb_prod)
         
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
+        btn_prod.setObjectName('btn_import_nhap_product')
         btn_prod.clicked.connect(self._pick_product_images)
         pv.addWidget(btn_prod)
         
@@ -546,15 +554,18 @@ class VideoBanHangPanel(QWidget):
         btn_layout = QHBoxLayout()
         
         self.btn_script = QPushButton("📝 Viết kịch bản")
+        self.btn_script.setObjectName('btn_primary_script')
         self.btn_script.setMinimumHeight(40)
         self.btn_script.clicked.connect(self._on_write_script)
         
         self.btn_images = QPushButton("🎨 Tạo ảnh")
+        self.btn_images.setObjectName('btn_warning_images')
         self.btn_images.setMinimumHeight(40)
         self.btn_images.clicked.connect(self._on_generate_images)
         self.btn_images.setEnabled(False)
         
         self.btn_video = QPushButton("🎬 Tạo video")
+        self.btn_video.setObjectName('btn_success_video')
         self.btn_video.setMinimumHeight(40)
         self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
@@ -636,6 +647,7 @@ class VideoBanHangPanel(QWidget):
             card_layout.addWidget(ed_caption)
             
             btn_copy = QPushButton("📋 Copy Caption")
+            btn_copy.setObjectName('btn_info_copy_caption')
             btn_copy.clicked.connect(lambda _, e=ed_caption: self._copy_to_clipboard(e.toPlainText()))
             card_layout.addWidget(btn_copy)
             
