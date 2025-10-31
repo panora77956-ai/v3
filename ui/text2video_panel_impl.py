@@ -228,7 +228,15 @@ class _Worker(QObject):
                 rc = client.start_one(body, model_key, ratio, scene["prompt"], copies=1, project_id=project_id)
                 card={"scene":scene_idx,"copy":copy_idx,"status":"PROCESSING","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
                 self.job_card.emit(card)
-                if rc>0: jobs.append((card, body))
+                if rc>0:
+                    # Store card data separately to avoid unhashable dict issues
+                    job_info = {
+                        'card': card,
+                        'body': body,
+                        'scene': scene_idx,
+                        'copy': copy_idx
+                    }
+                    jobs.append(job_info)
                 else: card["status"]="FAILED_START"; self.job_card.emit(card)
 
         # polling
@@ -237,15 +245,18 @@ class _Worker(QObject):
                 break
             # Extract all operation names from all jobs
             names = []
-            for (_, job_dict) in jobs:
+            for job_info in jobs:
+                job_dict = job_info['body']
                 names.extend(job_dict.get("operation_names", []))
             rs = client.batch_check_operations(names)
             new_jobs=[]
-            for (card, job_dict) in jobs:
+            for job_info in jobs:
+                card = job_info['card']
+                job_dict = job_info['body']
                 # Get the first operation name for this job
                 op_names = job_dict.get("operation_names", [])
                 if not op_names:
-                    new_jobs.append((card, job_dict))
+                    new_jobs.append(job_info)  # Append job_info, not tuple
                     continue
                 
                 # Check status of first operation (for single copy jobs, there's only one)
@@ -265,7 +276,7 @@ class _Worker(QObject):
                             if th: card['thumb']=th
                             self.job_card.emit(card)
                 else:
-                    new_jobs.append((card, job_dict))
+                    new_jobs.append(job_info)  # Append job_info, not tuple
             jobs=new_jobs
             try:
                 import time; time.sleep(5)
@@ -278,7 +289,8 @@ class _Worker(QObject):
             if not has_ffmpeg:
                 self.log.emit("[WARN] Không tìm thấy ffmpeg trong PATH — bỏ qua upscale 4K.")
             else:
-                for (card, _) in jobs:
+                for job_info in jobs:
+                    card = job_info['card']
                     if card.get("path"):
                         src=card["path"]; dst=src.replace(".mp4","_4k.mp4")
                         cmd=["ffmpeg","-y","-i",src,"-vf","scale=3840:-2","-c:v","libx264","-preset","fast",dst]
