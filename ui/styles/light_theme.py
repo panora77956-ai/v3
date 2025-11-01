@@ -7,26 +7,26 @@ Material Design Light principles implementation
 
 # Light Flat Color Palette
 COLORS = {
-    'primary': '#1E88E5',      # Blue - Primary/Info actions
-    'primary_dark': '#1565C0',
-    'primary_hover': '#2196F3',
-    'success': '#4CAF50',      # Green - Success/Generate
-    'success_hover': '#66BB6A',
-    'warning': '#FF6B2C',      # Orange - Warning/Auto actions
-    'warning_hover': '#FF8A50',
-    'danger': '#F44336',       # Red - Delete/Danger
-    'danger_hover': '#E57373',
-    'info': '#008080',         # Teal - Info/Check
-    'info_hover': '#009999',
-    'gray': '#666666',         # Gray - Stop/Cancel
-    'gray_hover': '#808080',
-    'background': '#F5F5F5',   # Light background
-    'surface': '#FFFFFF',      # Light surface
-    'border': '#E0E0E0',       # Light border
-    'divider': '#E0E0E0',
-    'hover': '#EEEEEE',
-    'text_primary': '#212121',
-    'text_secondary': '#424242',
+    "primary": "#1E88E5",  # Blue - Primary/Info actions
+    "primary_dark": "#1565C0",
+    "primary_hover": "#2196F3",
+    "success": "#4CAF50",  # Green - Success/Generate
+    "success_hover": "#66BB6A",
+    "warning": "#FF6B2C",  # Orange - Warning/Auto actions
+    "warning_hover": "#FF8A50",
+    "danger": "#F44336",  # Red - Delete/Danger
+    "danger_hover": "#E57373",
+    "info": "#008080",  # Teal - Info/Check
+    "info_hover": "#009999",
+    "gray": "#666666",  # Gray - Stop/Cancel
+    "gray_hover": "#808080",
+    "background": "#F5F5F5",  # Light background
+    "surface": "#FFFFFF",  # Light surface
+    "border": "#E0E0E0",  # Light border
+    "divider": "#E0E0E0",
+    "hover": "#EEEEEE",
+    "text_primary": "#212121",
+    "text_secondary": "#424242",
 }
 
 # Unified Light Theme Stylesheet with Segoe UI
@@ -505,7 +505,7 @@ QToolButton:pressed {
 def apply_light_theme(app):
     """
     Apply unified Material Design light theme to the application
-    
+
     Args:
         app: QApplication instance
     """
