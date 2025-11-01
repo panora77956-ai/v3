@@ -378,15 +378,18 @@ class VideoBanHangPanel(QWidget):
         self.ed_name.setFont(FONT_INPUT)
         self.ed_name.setPlaceholderText("Tự tạo nếu để trống")
         self.ed_name.setText(svc.default_project_name())
+        self.ed_name.setMinimumHeight(32)  # Increased height for better visibility
 
         self.ed_idea = QPlainTextEdit()
         self.ed_idea.setFont(FONT_INPUT)
-        self.ed_idea.setMinimumHeight(60)
+        self.ed_idea.setMinimumHeight(80)  # Increased from 60px
+        self.ed_idea.setMaximumHeight(80)
         self.ed_idea.setPlaceholderText("Ý tưởng (2–3 dòng)")
 
         self.ed_product = QPlainTextEdit()
         self.ed_product.setFont(FONT_INPUT)
-        self.ed_product.setMinimumHeight(80)
+        self.ed_product.setMinimumHeight(100)  # Increased from 80px
+        self.ed_product.setMaximumHeight(100)
         self.ed_product.setPlaceholderText("Nội dung chính / Đặc điểm sản phẩm")
 
         g.addWidget(QLabel("Tên dự án:"), 0, 0)
@@ -398,7 +401,9 @@ class VideoBanHangPanel(QWidget):
 
         for w in gb_proj.findChildren(QLabel):
             w.setFont(FONT_LABEL)
+            w.setStyleSheet("color: #424242; font-weight: 500;")
 
+        gb_proj.setMinimumHeight(280)
         layout.addWidget(gb_proj)
 
         # Model selector widget (0-5 models with image + JSON) (PR#5: Add icon)
@@ -419,6 +424,7 @@ class VideoBanHangPanel(QWidget):
         self.prod_thumb_container.setSpacing(4)
         pv.addLayout(self.prod_thumb_container)
 
+        gb_prod.setMinimumHeight(120)
         layout.addWidget(gb_prod)
 
         # Video settings (Grid 2x5) (PR#5: Add icon)
@@ -537,7 +543,9 @@ class VideoBanHangPanel(QWidget):
 
         for w in gb_cfg.findChildren(QLabel):
             w.setFont(FONT_LABEL)
+            w.setStyleSheet("color: #424242; font-weight: 500;")
 
+        gb_cfg.setMinimumHeight(220)
         layout.addWidget(gb_cfg)
         layout.addStretch(1)
 
@@ -578,40 +586,111 @@ class VideoBanHangPanel(QWidget):
 
     def _build_action_buttons(self, layout):
         """Build action buttons at bottom of left column"""
-        # Auto workflow button
-        self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
-        self.btn_auto.setObjectName("btn_auto")
-        self.btn_auto.setMinimumHeight(42)
-        self.btn_auto.clicked.connect(self._on_auto_workflow)
-        layout.addWidget(self.btn_auto)
 
-        # Individual step buttons
+        # === ROW 1: Workflow Buttons (Viết/Tạo/Video) - Horizontal ===
+        workflow_row = QHBoxLayout()
+        workflow_row.setSpacing(6)
+
         self.btn_script = QPushButton("📝 Viết kịch bản")
-        self.btn_script.setObjectName("btn_primary_script")
         self.btn_script.setMinimumHeight(42)
+        self.btn_script.setStyleSheet("""
+            QPushButton {
+                background-color: #FF6B2C;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #F4511E; }
+        """)
         self.btn_script.clicked.connect(self._on_write_script)
-        layout.addWidget(self.btn_script)
 
         self.btn_images = QPushButton("🎨 Tạo ảnh")
-        self.btn_images.setObjectName("btn_warning_images")
         self.btn_images.setMinimumHeight(42)
-        self.btn_images.clicked.connect(self._on_generate_images)
         self.btn_images.setEnabled(False)
-        layout.addWidget(self.btn_images)
+        self.btn_images.setStyleSheet("""
+            QPushButton {
+                background-color: #FF6B2C;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #F4511E; }
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #666666;
+            }
+        """)
+        self.btn_images.clicked.connect(self._on_generate_images)
 
         self.btn_video = QPushButton("🎬 Video")
-        self.btn_video.setObjectName("btn_success_video")
         self.btn_video.setMinimumHeight(42)
-        self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
-        layout.addWidget(self.btn_video)
+        self.btn_video.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #388E3C; }
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #666666;
+            }
+        """)
+        self.btn_video.clicked.connect(self._on_generate_video)
 
-        self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_stop")
+        workflow_row.addWidget(self.btn_script)
+        workflow_row.addWidget(self.btn_images)
+        workflow_row.addWidget(self.btn_video)
+
+        layout.addLayout(workflow_row)
+
+        # === ROW 2: Auto + Stop Buttons - Horizontal ===
+        auto_row = QHBoxLayout()
+        auto_row.setSpacing(6)
+
+        self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
+        self.btn_auto.setMinimumHeight(42)
+        self.btn_auto.setStyleSheet("""
+            QPushButton {
+                background-color: #FF6B2C;
+                color: white;
+                font-weight: bold;
+                font-size: 13px;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #F4511E; }
+        """)
+        self.btn_auto.clicked.connect(self._on_auto_workflow)
+
+        self.btn_stop = QPushButton("⏹️ Dừng")
         self.btn_stop.setMinimumHeight(42)
-        self.btn_stop.clicked.connect(self.stop_processing)
         self.btn_stop.setEnabled(False)
-        layout.addWidget(self.btn_stop)
+        self.btn_stop.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+                color: white;
+                font-weight: bold;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #D32F2F; }
+            QPushButton:disabled {
+                background-color: #FFCDD2;
+                color: #BDBDBD;
+            }
+        """)
+        self.btn_stop.clicked.connect(self.stop_processing)
+
+        auto_row.addWidget(self.btn_auto, 3)  # 75% width
+        auto_row.addWidget(self.btn_stop, 1)  # 25% width
+
+        layout.addLayout(auto_row)
 
     def _build_scenes_tab(self):
         """Build scenes tab"""
