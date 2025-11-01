@@ -1528,7 +1528,11 @@ class VideoBanHangPanel(QWidget):
             self._append_log(f"✓ Đổi thư mục tải: {new_path}")
 
     def _auto_download_video(self, source_path):
-        """Copy video to download folder and open folder"""
+        """Copy video to download folder and open folder
+        
+        Args:
+            source_path (str): Path to the source video file to download
+        """
         try:
             download_dir = Path(self.ed_download_path.text())
             download_dir.mkdir(parents=True, exist_ok=True)
@@ -1558,14 +1562,18 @@ class VideoBanHangPanel(QWidget):
             QMessageBox.warning(self, "Lỗi", f"Không thể tải video:\n{e}")
 
     def _open_folder(self, folder_path):
-        """Open folder in file explorer"""
+        """Open folder in file explorer
+        
+        Args:
+            folder_path (Path): Path object or string path to the folder to open
+        """
         try:
             if platform.system() == 'Windows':
-                subprocess.Popen(f'explorer "{folder_path}"')
+                subprocess.Popen(['explorer', str(folder_path)])
             elif platform.system() == 'Darwin':
-                subprocess.Popen(['open', folder_path])
+                subprocess.Popen(['open', str(folder_path)])
             else:
-                subprocess.Popen(['xdg-open', folder_path])
+                subprocess.Popen(['xdg-open', str(folder_path)])
         except Exception as e:
             self._append_log(f"⚠ Không thể mở thư mục: {e}")
 
