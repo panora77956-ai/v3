@@ -280,13 +280,22 @@ class ImageGenerationWorker(QThread):
                         )
 
                         if img_data_url:
-                            # Convert data URL to bytes
-                            match = re.search(r'base64,(.+)', img_data_url)
-                            if match:
-                                img_data = base64.b64decode(match.group(1))
+                            # Handle both bytes and data URL string formats
+                            if isinstance(img_data_url, bytes):
+                                # Already bytes, use directly
+                                img_data = img_data_url
                                 self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                            elif isinstance(img_data_url, str):
+                                # Data URL string, convert to bytes
+                                match = re.search(r'base64,(.+)', img_data_url)
+                                if match:
+                                    img_data = base64.b64decode(match.group(1))
+                                    self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                                else:
+                                    self.progress.emit(f"Cảnh {scene.get('index')}: Invalid data URL")
+                                    img_data = None
                             else:
-                                self.progress.emit(f"Cảnh {scene.get('index')}: Invalid data URL")
+                                self.progress.emit(f"Cảnh {scene.get('index')}: Unknown image format")
                                 img_data = None
                         else:
                             self.progress.emit(f"Cảnh {scene.get('index')}: Không tạo được ảnh")
@@ -330,11 +339,20 @@ class ImageGenerationWorker(QThread):
                     )
 
                     if thumb_data_url:
-                        # Convert data URL to bytes
-                        match = re.search(r'base64,(.+)', thumb_data_url)
-                        if match:
-                            thumb_data = base64.b64decode(match.group(1))
-                            
+                        # Handle both bytes and data URL string formats
+                        thumb_data = None
+                        if isinstance(thumb_data_url, bytes):
+                            # Already bytes, use directly
+                            thumb_data = thumb_data_url
+                        elif isinstance(thumb_data_url, str):
+                            # Data URL string, convert to bytes
+                            match = re.search(r'base64,(.+)', thumb_data_url)
+                            if match:
+                                thumb_data = base64.b64decode(match.group(1))
+                            else:
+                                self.progress.emit(f"Thumbnail {i+1}: Invalid data URL")
+                        
+                        if thumb_data:
                             import tempfile
 
                             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -354,8 +372,6 @@ class ImageGenerationWorker(QThread):
 
                             self.thumbnail_ready.emit(i, final_thumb)
                             self.progress.emit(f"Thumbnail {i+1}: ✓")
-                        else:
-                            self.progress.emit(f"Thumbnail {i+1}: Invalid data URL")
                     else:
                         self.progress.emit(f"Thumbnail {i+1}: Không tạo được")
 
