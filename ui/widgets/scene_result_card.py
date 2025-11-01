@@ -57,9 +57,9 @@ class SceneResultCard(QFrame):
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(4)
 
-        # Left: Image preview (80x80px - compact size)
+        # Left: Image preview - Issue 5b: Increased from 80x80 to 200x200px
         self.img_preview = QLabel()
-        self.img_preview.setFixedSize(80, 80)
+        self.img_preview.setFixedSize(200, 200)
         self.img_preview.setStyleSheet("""
             QLabel {
                 background: #F5F5F5;
@@ -76,37 +76,38 @@ class SceneResultCard(QFrame):
         content_layout = QVBoxLayout()
         content_layout.setSpacing(4)
 
-        # Title (blue, bold)
+        # Title (blue, bold) - Issue 5a: Increased font size from 12px to 18px
         lbl_title = QLabel(f"Cảnh {self.scene_index}")
-        lbl_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        lbl_title.setFont(QFont("Segoe UI", 18, QFont.Bold))
         lbl_title.setStyleSheet("color: #1976D2;")
         content_layout.addWidget(lbl_title)
 
-        # Description
+        # Description - Issue 5d: Set font size to 13px
         desc_text = self.scene_data.get('description', '') or self.scene_data.get('desc', '')
         if desc_text and len(desc_text) > 80:
             desc_text = desc_text[:80] + "..."
         lbl_desc = QLabel(desc_text or "Không có mô tả")
         lbl_desc.setWordWrap(True)
-        lbl_desc.setFont(QFont("Segoe UI", 10))
-        lbl_desc.setStyleSheet("color: #424242;")
+        lbl_desc.setFont(QFont("Segoe UI", 13))
+        lbl_desc.setStyleSheet("color: #424242; border: none;")  # Issue 5c: Remove border
         content_layout.addWidget(lbl_desc)
 
-        # Speech text (Lời thoại)
+        # Speech text (Lời thoại) - Issue 5d: Set font size to 13px
         speech_text = self.scene_data.get('speech', '') or self.scene_data.get('voice_over', '')
         if speech_text:
             if len(speech_text) > 100:
                 speech_text = speech_text[:100] + "..."
             lbl_speech = QLabel(f"🎤 Lời thoại: {speech_text}")
             lbl_speech.setWordWrap(True)
-            lbl_speech.setFont(QFont("Segoe UI", 9))
-            lbl_speech.setStyleSheet("color: #757575;")
+            lbl_speech.setFont(QFont("Segoe UI", 13))
+            lbl_speech.setStyleSheet("color: #757575; border: none;")  # Issue 5c: Remove border
             content_layout.addWidget(lbl_speech)
 
         # Action buttons
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(4)
 
+        # Issue 5c: Button style without unnecessary borders
         btn_style = """
             QPushButton {
                 background: transparent;
@@ -222,17 +223,17 @@ class SceneResultCard(QFrame):
         QMessageBox.information(self, "Thành công", "Đã copy vào clipboard!")
 
     def set_image(self, image_bytes):
-        """Set image from bytes"""
+        """Set image from bytes - Issue 5b: Updated to 200x200px"""
         pixmap = QPixmap()
         pixmap.loadFromData(image_bytes)
-        self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.img_preview.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def set_image_pixmap(self, pixmap):
-        """Set image from pixmap"""
-        self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        """Set image from pixmap - Issue 5b: Updated to 200x200px"""
+        self.img_preview.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def set_image_path(self, path):
-        """Set image from file path"""
+        """Set image from file path - Issue 5b: Updated to 200x200px"""
         pixmap = QPixmap(path)
         if not pixmap.isNull():
-            self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.img_preview.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))

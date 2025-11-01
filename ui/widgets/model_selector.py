@@ -115,18 +115,29 @@ class ModelRow(QFrame):
         layout.addLayout(right_layout, 1)
 
     def _pick_image(self):
-        """Pick image for model"""
+        """Pick image for model - Issue 4: Enhanced with error handling"""
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Chọn ảnh người mẫu",
             "",
-            "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+            "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif)"
         )
         if path:
-            self.image_path = path
+            # Issue 4: Verify file exists
+            import os
+            if not os.path.exists(path):
+                QMessageBox.warning(self, "Lỗi", "File không tồn tại")
+                return
+            
+            # Issue 4: Try to load the image
             pixmap = QPixmap(path)
-            if not pixmap.isNull():
-                self.img_preview.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            if pixmap.isNull():
+                QMessageBox.warning(self, "Lỗi", "Không thể load ảnh. Vui lòng chọn file ảnh hợp lệ.")
+                return
+            
+            # Issue 4: Successfully loaded, save path and display
+            self.image_path = path
+            self.img_preview.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def get_data(self):
         """Get model data (image path + JSON)"""
