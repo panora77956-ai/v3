@@ -336,9 +336,9 @@ class VideoBanHangPanel(QWidget):
         main.setSpacing(0)
         main.setContentsMargins(0, 0, 0, 0)
         
-        # Left column (380px fixed)
+        # Left column (400px fixed - PR#5)
         self.left_widget = QWidget()
-        self.left_widget.setFixedWidth(380)
+        self.left_widget.setFixedWidth(400)
         left_layout = QVBoxLayout(self.left_widget)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
@@ -361,8 +361,8 @@ class VideoBanHangPanel(QWidget):
     def _build_left_column(self, layout):
         """Build left column with project settings"""
         
-        # Project info
-        gb_proj = self._create_group("Dự án")
+        # Project info (PR#5: Add icon)
+        gb_proj = self._create_group("📁 Dự án")
         g = QGridLayout(gb_proj)
         g.setVerticalSpacing(6)
         
@@ -393,12 +393,12 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(gb_proj)
         
-        # Model selector widget (0-5 models with image + JSON)
-        self.model_selector = ModelSelectorWidget("Thông tin người mẫu")
+        # Model selector widget (0-5 models with image + JSON) (PR#5: Add icon)
+        self.model_selector = ModelSelectorWidget("👤 Thông tin người mẫu")
         layout.addWidget(self.model_selector)
         
-        # Product images
-        gb_prod = self._create_group("Ảnh sản phẩm")
+        # Product images (PR#5: Add icon)
+        gb_prod = self._create_group("📦 Ảnh sản phẩm")
         pv = QVBoxLayout(gb_prod)
         
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
@@ -412,8 +412,8 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(gb_prod)
         
-        # Video settings (Grid 2x5)
-        gb_cfg = self._create_group("Cài đặt video")
+        # Video settings (Grid 2x5) (PR#5: Add icon)
+        gb_cfg = self._create_group("⚙️ Cài đặt video")
         s = QGridLayout(gb_cfg)
         s.setVerticalSpacing(8)
         s.setHorizontalSpacing(10)
@@ -441,8 +441,37 @@ class VideoBanHangPanel(QWidget):
         self.ed_voice = make_widget(QLineEdit)
         self.ed_voice.setPlaceholderText("ElevenLabs VoiceID")
         
+        # PR#5: Expand language selector to 25+ languages with Vietnamese transliteration
         self.cb_lang = make_widget(QComboBox)
-        self.cb_lang.addItems(["vi", "en"])
+        LANGUAGES = [
+            "vi - Tiếng Việt (Vietnamese)",
+            "en - Tiếng Anh (English)",
+            "zh-CN - Tiếng Trung - Giản thể (Chinese Simplified)",
+            "zh-TW - Tiếng Trung - Phồn thể (Chinese Traditional)",
+            "ja - Tiếng Nhật (Japanese)",
+            "ko - Tiếng Hàn (Korean)",
+            "th - Tiếng Thái (Thai)",
+            "id - Tiếng Indonesia (Indonesian)",
+            "ms - Tiếng Mã Lai (Malay)",
+            "tl - Tiếng Tagalog (Filipino)",
+            "fr - Tiếng Pháp (French)",
+            "de - Tiếng Đức (German)",
+            "es - Tiếng Tây Ban Nha (Spanish)",
+            "pt - Tiếng Bồ Đào Nha (Portuguese)",
+            "it - Tiếng Ý (Italian)",
+            "ru - Tiếng Nga (Russian)",
+            "ar - Tiếng Ả Rập (Arabic)",
+            "hi - Tiếng Hindi (Hindi)",
+            "bn - Tiếng Bengal (Bengali)",
+            "pa - Tiếng Punjab (Punjabi)",
+            "tr - Tiếng Thổ Nhĩ Kỳ (Turkish)",
+            "pl - Tiếng Ba Lan (Polish)",
+            "uk - Tiếng Ukraina (Ukrainian)",
+            "nl - Tiếng Hà Lan (Dutch)",
+            "sv - Tiếng Thụy Điển (Swedish)",
+            "no - Tiếng Na Uy (Norwegian)",
+        ]
+        self.cb_lang.addItems(LANGUAGES)
         
         self.sp_duration = make_widget(QSpinBox)
         self.sp_duration.setRange(8, 1200)
@@ -537,29 +566,38 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(gb_log, 1)
         
-        # 3 buttons at bottom
+        # PR#5: Auto workflow button + increased button heights
+        # Auto workflow button (3 steps in 1)
+        self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
+        self.btn_auto.setObjectName('btn_success_auto')
+        self.btn_auto.setMinimumHeight(48)
+        self.btn_auto.clicked.connect(self._on_auto_workflow)
+        layout.addWidget(self.btn_auto)
+        
+        # 3 buttons at bottom (PR#5: height 40px+)
         btn_layout = QHBoxLayout()
         
         self.btn_script = QPushButton("📝 Viết kịch bản")
         self.btn_script.setObjectName('btn_primary_script')
-        self.btn_script.setMinimumHeight(40)
+        self.btn_script.setMinimumHeight(42)
         self.btn_script.clicked.connect(self._on_write_script)
         
         self.btn_images = QPushButton("🎨 Tạo ảnh")
         self.btn_images.setObjectName('btn_warning_images')
-        self.btn_images.setMinimumHeight(40)
+        self.btn_images.setMinimumHeight(42)
         self.btn_images.clicked.connect(self._on_generate_images)
         self.btn_images.setEnabled(False)
         
-        self.btn_video = QPushButton("🎬 Tạo video")
+        self.btn_video = QPushButton("🎬 Video")
         self.btn_video.setObjectName('btn_success_video')
-        self.btn_video.setMinimumHeight(40)
+        self.btn_video.setMinimumHeight(42)
         self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
         
-        # PR#4: Add stop button
+        # PR#4: Add Stop button (PR#5: height 42px)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setObjectName("btn_danger_stop")
+        self.btn_stop.setMinimumHeight(42)
         self.btn_stop.setMaximumWidth(80)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_processing)
@@ -737,7 +775,7 @@ class VideoBanHangPanel(QWidget):
             "duration_sec": int(self.sp_duration.value()),
             "videos_count": int(self.sp_videos.value()),
             "ratio": self.cb_ratio.currentText(),
-            "speech_lang": self.cb_lang.currentText(),
+            "speech_lang": self.cb_lang.currentText().split(" - ")[0] if " - " in self.cb_lang.currentText() else self.cb_lang.currentText(),  # PR#5: Extract language code
             "social_platform": self.cb_social.currentText(),
             "first_model_json": first_model_json,
             "product_count": len(self.prod_paths),
@@ -757,6 +795,23 @@ class VideoBanHangPanel(QWidget):
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
         self._append_log("Đã copy vào clipboard")
+    
+    def _on_auto_workflow(self):
+        """PR#5: Auto workflow - runs all 3 steps sequentially"""
+        self._append_log("⚡ Bắt đầu quy trình tự động (3 bước)...")
+        
+        # Disable auto button during workflow
+        self.btn_auto.setEnabled(False)
+        self.btn_script.setEnabled(False)
+        self.btn_images.setEnabled(False)
+        self.btn_video.setEnabled(False)
+        
+        # Step 1: Write script
+        self._append_log("📝 Bước 1/3: Viết kịch bản...")
+        self._on_write_script()
+        
+        # Note: Steps 2 and 3 will be triggered automatically via signals
+        # when each step completes (script_finished -> generate_images -> generate_video)
     
     def _on_write_script(self):
         """Write script"""

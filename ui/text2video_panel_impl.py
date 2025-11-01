@@ -220,16 +220,22 @@ class _Worker(QObject):
         thumbs_dir = os.path.join(dir_videos, "thumbs")
 
         jobs = []
+        # PR#5: Batch generation - make one call per scene with copies parameter (not N calls)
         for scene_idx, scene in enumerate(p["scenes"], start=1):
             ratio = scene["aspect"]
             model_key = p.get("model_key","")
-            for copy_idx in range(1, copies+1):
-                body = {"prompt": scene["prompt"], "copies": 1, "model": model_key, "aspect_ratio": ratio}
-                self.log.emit(f"[INFO] Start scene {scene_idx} copy {copy_idx}…")
-                rc = client.start_one(body, model_key, ratio, scene["prompt"], copies=1, project_id=project_id)
-                card={"scene":scene_idx,"copy":copy_idx,"status":"PROCESSING","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
-                self.job_card.emit(card)
-                if rc>0:
+            
+            # Single API call with copies parameter (instead of N calls)
+            body = {"prompt": scene["prompt"], "copies": copies, "model": model_key, "aspect_ratio": ratio}
+            self.log.emit(f"[INFO] Start scene {scene_idx} with {copies} copies in one batch…")
+            rc = client.start_one(body, model_key, ratio, scene["prompt"], copies=copies, project_id=project_id)
+            
+            if rc > 0:
+                # Create cards for each expected copy
+                for copy_idx in range(1, copies+1):
+                    card={"scene":scene_idx,"copy":copy_idx,"status":"PROCESSING","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
+                    self.job_card.emit(card)
+                    
                     # Store card data separately to avoid unhashable dict issues
                     job_info = {
                         'card': card,
@@ -238,7 +244,11 @@ class _Worker(QObject):
                         'copy': copy_idx
                     }
                     jobs.append(job_info)
-                else: card["status"]="FAILED_START"; self.job_card.emit(card)
+            else:
+                # All copies failed to start
+                for copy_idx in range(1, copies+1):
+                    card={"scene":scene_idx,"copy":copy_idx,"status":"FAILED_START","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
+                    self.job_card.emit(card)
 
         # polling
         for _ in range(120):
