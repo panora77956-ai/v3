@@ -84,7 +84,7 @@ class SceneCardWidget(QFrame):
         info_layout.addWidget(title)
 
         # Description
-        desc_text = self.scene_data.get('desc', '')
+        desc_text = self.scene_data.get("desc", "")
         if len(desc_text) > 150:
             desc_text = desc_text[:150] + "..."
         desc = QLabel(desc_text)
@@ -92,7 +92,7 @@ class SceneCardWidget(QFrame):
         info_layout.addWidget(desc)
 
         # Speech text
-        speech_text = self.scene_data.get('speech', '')
+        speech_text = self.scene_data.get("speech", "")
         if len(speech_text) > 100:
             speech_text = speech_text[:100] + "..."
         speech = QLabel(f"🎤 {speech_text}")
@@ -107,18 +107,18 @@ class SceneCardWidget(QFrame):
 
         # Prompt button
         btn_prompt = QPushButton("📝 Prompt ảnh/video")
-        btn_prompt.setObjectName('btn_info_prompt')
+        btn_prompt.setObjectName("btn_info_prompt")
         btn_prompt.clicked.connect(self._show_prompts)
         btn_layout.addWidget(btn_prompt)
 
         # Regenerate button
         btn_regen = QPushButton("🔄 Tạo lại")
-        btn_regen.setObjectName('btn_warning_regen')
+        btn_regen.setObjectName("btn_warning_regen")
         btn_layout.addWidget(btn_regen)
 
         # Video button
         btn_video = QPushButton("🎬 Video")
-        btn_video.setObjectName('btn_primary_video')
+        btn_video.setObjectName("btn_primary_video")
         btn_layout.addWidget(btn_video)
 
         info_layout.addLayout(btn_layout)
@@ -139,13 +139,15 @@ class SceneCardWidget(QFrame):
 
         ed_img_prompt = QTextEdit()
         ed_img_prompt.setReadOnly(True)
-        ed_img_prompt.setPlainText(self.scene_data.get('prompt_image', ''))
+        ed_img_prompt.setPlainText(self.scene_data.get("prompt_image", ""))
         ed_img_prompt.setMaximumHeight(180)
         layout.addWidget(ed_img_prompt)
 
         btn_copy_img = QPushButton("📋 Copy Prompt Ảnh")
-        btn_copy_img.setObjectName('btn_info_copy')
-        btn_copy_img.clicked.connect(lambda: self._copy_to_clipboard(self.scene_data.get('prompt_image', '')))
+        btn_copy_img.setObjectName("btn_info_copy")
+        btn_copy_img.clicked.connect(
+            lambda: self._copy_to_clipboard(self.scene_data.get("prompt_image", ""))
+        )
         layout.addWidget(btn_copy_img)
 
         # Video prompt section
@@ -154,18 +156,20 @@ class SceneCardWidget(QFrame):
 
         ed_vid_prompt = QTextEdit()
         ed_vid_prompt.setReadOnly(True)
-        ed_vid_prompt.setPlainText(self.scene_data.get('prompt_video', ''))
+        ed_vid_prompt.setPlainText(self.scene_data.get("prompt_video", ""))
         ed_vid_prompt.setMaximumHeight(180)
         layout.addWidget(ed_vid_prompt)
 
         btn_copy_vid = QPushButton("📋 Copy Prompt Video")
-        btn_copy_vid.setObjectName('btn_info_copy_vid')
-        btn_copy_vid.clicked.connect(lambda: self._copy_to_clipboard(self.scene_data.get('prompt_video', '')))
+        btn_copy_vid.setObjectName("btn_info_copy_vid")
+        btn_copy_vid.clicked.connect(
+            lambda: self._copy_to_clipboard(self.scene_data.get("prompt_video", ""))
+        )
         layout.addWidget(btn_copy_vid)
 
         # Close button
         btn_close = QPushButton("✖ Đóng")
-        btn_close.setObjectName('btn_primary_close')
+        btn_close.setObjectName("btn_primary_close")
         btn_close.clicked.connect(dialog.close)
         layout.addWidget(btn_close)
 
@@ -180,11 +184,14 @@ class SceneCardWidget(QFrame):
     def set_image(self, pixmap):
         """Set the preview image"""
         if self.image_label:
-            self.image_label.setPixmap(pixmap.scaled(320, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.image_label.setPixmap(
+                pixmap.scaled(320, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
 
 
 class ImageGenerationWorker(QThread):
     """Worker thread for generating images (scenes + thumbnails)"""
+
     progress = pyqtSignal(str)
     scene_image_ready = pyqtSignal(int, bytes)
     thumbnail_ready = pyqtSignal(int, bytes)
@@ -210,7 +217,9 @@ class ImageGenerationWorker(QThread):
                 # CRITICAL FIX: Add mandatory delay BEFORE every request (except first)
                 # This prevents rate limiting regardless of which key is used
                 if i > 0:
-                    self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước khi tạo ảnh cảnh {scene.get('index')}...")
+                    self.progress.emit(
+                        f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước khi tạo ảnh cảnh {scene.get('index')}..."
+                    )
                     time.sleep(RATE_LIMIT_DELAY_SEC)
 
                 self.progress.emit(f"Tạo ảnh cảnh {scene.get('index')}...")
@@ -224,11 +233,12 @@ class ImageGenerationWorker(QThread):
                     # Try Whisk first
                     try:
                         from services import whisk_service
+
                         img_data = whisk_service.generate_image(
                             prompt=prompt,
                             model_image=self.model_paths[0] if self.model_paths else None,
                             product_image=self.prod_paths[0] if self.prod_paths else None,
-                            debug_callback=self.progress.emit
+                            debug_callback=self.progress.emit,
                         )
                         if img_data:
                             self.progress.emit(f"Cảnh {scene.get('index')}: Whisk ✓")
@@ -245,7 +255,7 @@ class ImageGenerationWorker(QThread):
                         img_data = image_gen_service.generate_image_with_rate_limit(
                             prompt,
                             delay_before=0,  # Explicitly no extra delay
-                            log_callback=lambda msg: self.progress.emit(msg)
+                            log_callback=lambda msg: self.progress.emit(msg),
                         )
 
                         if img_data:
@@ -256,7 +266,7 @@ class ImageGenerationWorker(QThread):
                         self.progress.emit(f"Gemini failed for scene {scene.get('index')}: {e}")
 
                 if img_data:
-                    self.scene_image_ready.emit(scene.get('index'), img_data)
+                    self.scene_image_ready.emit(scene.get("index"), img_data)
 
             # Generate social media thumbnails
             social_media = self.outline.get("social_media", {})
@@ -268,7 +278,9 @@ class ImageGenerationWorker(QThread):
 
                 # CRITICAL FIX: Delay before thumbnails too
                 # First thumbnail comes after all scene images, so always delay
-                self.progress.emit(f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước thumbnail {i+1}...")
+                self.progress.emit(
+                    f"[RATE LIMIT] Chờ {RATE_LIMIT_DELAY_SEC}s trước thumbnail {i+1}..."
+                )
                 time.sleep(RATE_LIMIT_DELAY_SEC)
 
                 self.progress.emit(f"Tạo thumbnail phiên bản {i+1}...")
@@ -279,23 +291,22 @@ class ImageGenerationWorker(QThread):
                 try:
                     # No additional delay - we already waited above
                     thumb_data = image_gen_service.generate_image_with_rate_limit(
-                        prompt,
-                        delay_before=0,
-                        log_callback=lambda msg: self.progress.emit(msg)
+                        prompt, delay_before=0, log_callback=lambda msg: self.progress.emit(msg)
                     )
 
                     if thumb_data:
                         import tempfile
-                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                             tmp.write(thumb_data)
                             tmp_path = tmp.name
 
-                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_out:
+                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_out:
                             out_path = tmp_out.name
 
                         sscript.generate_thumbnail_with_text(tmp_path, text_overlay, out_path)
 
-                        with open(out_path, 'rb') as f:
+                        with open(out_path, "rb") as f:
                             final_thumb = f.read()
 
                         os.unlink(tmp_path)
@@ -331,10 +342,10 @@ class VideoBanHangPanel(QWidget):
 
         # Cache system to persist data across workflow steps
         self.cache = {
-            'outline': None,
-            'scene_images': {},
-            'scene_prompts': {},
-            'thumbnails': {},
+            "outline": None,
+            "scene_images": {},
+            "scene_prompts": {},
+            "thumbnails": {},
         }
 
         self._build_ui()
@@ -346,9 +357,9 @@ class VideoBanHangPanel(QWidget):
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
 
-        # LEFT COLUMN - EXACTLY 400px
+        # LEFT COLUMN - EXACTLY 480px (was 400px, +80px for better spacing)
         self.left_widget = QWidget()
-        self.left_widget.setFixedWidth(400)
+        self.left_widget.setFixedWidth(480)
         left_layout = QVBoxLayout(self.left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(6)
@@ -406,16 +417,49 @@ class VideoBanHangPanel(QWidget):
         gb_proj.setMinimumHeight(280)
         layout.addWidget(gb_proj)
 
-        # Model selector widget (0-5 models with image + JSON) (PR#5: Add icon)
-        self.model_selector = ModelSelectorWidget("👤 Thông tin người mẫu")
-        layout.addWidget(self.model_selector)
+        # Model selector widget with toggle (PR#17: Hidden by default)
+        group_models = QGroupBox("👤 Thông tin người mẫu")
+        group_models_layout = QVBoxLayout()
+
+        # Button to show/hide model selector
+        self.btn_toggle_models = QPushButton("➕ Thêm người mẫu")
+        self.btn_toggle_models.setMinimumHeight(32)
+        self.btn_toggle_models.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover { background-color: #388E3C; }
+        """
+        )
+        self.btn_toggle_models.clicked.connect(self._toggle_model_selector)
+
+        # ModelSelectorWidget container (hidden by default)
+        self.model_selector_container = QWidget()
+        self.model_selector_container.setVisible(False)  # HIDDEN BY DEFAULT
+        model_container_layout = QVBoxLayout(self.model_selector_container)
+        model_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # ModelSelectorWidget inside container (no title since parent has it)
+        self.model_selector = ModelSelectorWidget(title="")
+        model_container_layout.addWidget(self.model_selector)
+
+        # Add to GroupBox
+        group_models_layout.addWidget(self.btn_toggle_models)
+        group_models_layout.addWidget(self.model_selector_container)
+        group_models.setLayout(group_models_layout)
+
+        layout.addWidget(group_models)
 
         # Product images (PR#5: Add icon)
         gb_prod = self._create_group("📦 Ảnh sản phẩm")
         pv = QVBoxLayout(gb_prod)
 
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
-        btn_prod.setObjectName('btn_primary')
+        btn_prod.setObjectName("btn_primary")
         btn_prod.setMinimumHeight(32)  # 32px per spec (action buttons are 42px)
         btn_prod.clicked.connect(self._pick_product_images)
         pv.addWidget(btn_prod)
@@ -502,7 +546,7 @@ class VideoBanHangPanel(QWidget):
         self.cb_ratio.addItems(["9:16", "16:9", "1:1", "4:5"])
 
         self.cb_social = make_widget(QComboBox)
-        self.cb_social.addItems(['TikTok', 'Facebook', 'YouTube'])
+        self.cb_social.addItems(["TikTok", "Facebook", "YouTube"])
 
         self.lb_scenes = QLabel("Số cảnh: 4")
         self.lb_scenes.setFont(FONT_LABEL)
@@ -593,7 +637,8 @@ class VideoBanHangPanel(QWidget):
 
         self.btn_script = QPushButton("📝 Viết kịch bản")
         self.btn_script.setMinimumHeight(42)
-        self.btn_script.setStyleSheet("""
+        self.btn_script.setStyleSheet(
+            """
             QPushButton {
                 background-color: #FF6B2C;
                 color: white;
@@ -602,13 +647,15 @@ class VideoBanHangPanel(QWidget):
                 border-radius: 4px;
             }
             QPushButton:hover { background-color: #F4511E; }
-        """)
+        """
+        )
         self.btn_script.clicked.connect(self._on_write_script)
 
         self.btn_images = QPushButton("🎨 Tạo ảnh")
         self.btn_images.setMinimumHeight(42)
         self.btn_images.setEnabled(False)
-        self.btn_images.setStyleSheet("""
+        self.btn_images.setStyleSheet(
+            """
             QPushButton {
                 background-color: #FF6B2C;
                 color: white;
@@ -621,13 +668,15 @@ class VideoBanHangPanel(QWidget):
                 background-color: #CCCCCC;
                 color: #666666;
             }
-        """)
+        """
+        )
         self.btn_images.clicked.connect(self._on_generate_images)
 
         self.btn_video = QPushButton("🎬 Video")
         self.btn_video.setMinimumHeight(42)
         self.btn_video.setEnabled(False)
-        self.btn_video.setStyleSheet("""
+        self.btn_video.setStyleSheet(
+            """
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
@@ -640,7 +689,8 @@ class VideoBanHangPanel(QWidget):
                 background-color: #CCCCCC;
                 color: #666666;
             }
-        """)
+        """
+        )
         self.btn_video.clicked.connect(self._on_generate_video)
 
         workflow_row.addWidget(self.btn_script)
@@ -655,7 +705,8 @@ class VideoBanHangPanel(QWidget):
 
         self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
         self.btn_auto.setMinimumHeight(42)
-        self.btn_auto.setStyleSheet("""
+        self.btn_auto.setStyleSheet(
+            """
             QPushButton {
                 background-color: #FF6B2C;
                 color: white;
@@ -665,13 +716,15 @@ class VideoBanHangPanel(QWidget):
                 border-radius: 4px;
             }
             QPushButton:hover { background-color: #F4511E; }
-        """)
+        """
+        )
         self.btn_auto.clicked.connect(self._on_auto_workflow)
 
         self.btn_stop = QPushButton("⏹️ Dừng")
         self.btn_stop.setMinimumHeight(42)
         self.btn_stop.setEnabled(False)
-        self.btn_stop.setStyleSheet("""
+        self.btn_stop.setStyleSheet(
+            """
             QPushButton {
                 background-color: #F44336;
                 color: white;
@@ -684,7 +737,8 @@ class VideoBanHangPanel(QWidget):
                 background-color: #FFCDD2;
                 color: #BDBDBD;
             }
-        """)
+        """
+        )
         self.btn_stop.clicked.connect(self.stop_processing)
 
         auto_row.addWidget(self.btn_auto, 3)  # 75% width
@@ -733,7 +787,7 @@ class VideoBanHangPanel(QWidget):
             img_thumb.setText("Chưa tạo")
             card_layout.addWidget(img_thumb)
 
-            self.thumbnail_widgets.append({'thumbnail': img_thumb})
+            self.thumbnail_widgets.append({"thumbnail": img_thumb})
             layout.addWidget(version_card)
 
         layout.addStretch()
@@ -760,18 +814,19 @@ class VideoBanHangPanel(QWidget):
             ed_combined = QTextEdit()
             ed_combined.setReadOnly(True)
             ed_combined.setMinimumHeight(120)
-            ed_combined.setPlaceholderText("Caption và hashtags sẽ hiển thị ở đây sau khi tạo kịch bản")
+            ed_combined.setPlaceholderText(
+                "Caption và hashtags sẽ hiển thị ở đây sau khi tạo kịch bản"
+            )
             card_layout.addWidget(ed_combined)
 
             btn_copy = QPushButton("📋 Copy toàn bộ")
-            btn_copy.setObjectName('btn_info_copy_caption')
-            btn_copy.clicked.connect(lambda _, e=ed_combined: self._copy_to_clipboard(e.toPlainText()))
+            btn_copy.setObjectName("btn_info_copy_caption")
+            btn_copy.clicked.connect(
+                lambda _, e=ed_combined: self._copy_to_clipboard(e.toPlainText())
+            )
             card_layout.addWidget(btn_copy)
 
-            self.social_version_widgets.append({
-                'widget': version_card,
-                'combined': ed_combined
-            })
+            self.social_version_widgets.append({"widget": version_card, "combined": ed_combined})
 
             layout.addWidget(version_card)
 
@@ -789,13 +844,45 @@ class VideoBanHangPanel(QWidget):
         n = max(1, math.ceil(self.sp_duration.value() / 8.0))
         self.lb_scenes.setText(f"Số cảnh: {n}")
 
+    def _toggle_model_selector(self):
+        """Toggle model selector visibility (PR#17)"""
+        is_visible = self.model_selector_container.isVisible()
+        self.model_selector_container.setVisible(not is_visible)
 
+        # Update button text and style
+        if is_visible:
+            # Hiding - show green "Add" button
+            self.btn_toggle_models.setText("➕ Thêm người mẫu")
+            self.btn_toggle_models.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover { background-color: #388E3C; }
+            """
+            )
+        else:
+            # Showing - change to orange "Hide" button
+            self.btn_toggle_models.setText("➖ Ẩn người mẫu")
+            self.btn_toggle_models.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #FF9800;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover { background-color: #F57C00; }
+            """
+            )
 
     def _pick_product_images(self):
         """Pick product images"""
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Chọn ảnh sản phẩm", "",
-            "Images (*.png *.jpg *.jpeg *.webp)"
+            self, "Chọn ảnh sản phẩm", "", "Images (*.png *.jpg *.jpeg *.webp)"
         )
         if not files:
             return
@@ -815,10 +902,11 @@ class VideoBanHangPanel(QWidget):
             thumb = QLabel()
             thumb.setFixedSize(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
             thumb.setScaledContents(True)
-            thumb.setPixmap(QPixmap(path).scaled(
-                THUMBNAIL_SIZE, THUMBNAIL_SIZE,
-                Qt.KeepAspectRatio, Qt.SmoothTransformation
-            ))
+            thumb.setPixmap(
+                QPixmap(path).scaled(
+                    THUMBNAIL_SIZE, THUMBNAIL_SIZE, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+            )
             thumb.setStyleSheet("border: 1px solid #90CAF9;")
             self.prod_thumb_container.addWidget(thumb)
 
@@ -835,19 +923,20 @@ class VideoBanHangPanel(QWidget):
         """Collect configuration"""
         # Get models from ModelSelectorWidget
         models = self.model_selector.get_models()
-        model_paths = [m['image_path'] for m in models if m.get('image_path')]
+        model_paths = [m["image_path"] for m in models if m.get("image_path")]
 
         # For backward compatibility, use first model's JSON if available
         first_model_json = ""
-        if models and models[0].get('data'):
+        if models and models[0].get("data"):
             import json
+
             try:
-                first_model_json = json.dumps(models[0]['data'], ensure_ascii=False)
+                first_model_json = json.dumps(models[0]["data"], ensure_ascii=False)
             except:
-                first_model_json = str(models[0]['data'])
+                first_model_json = str(models[0]["data"])
 
         return {
-            "project_name": (self.ed_name.text() or '').strip() or svc.default_project_name(),
+            "project_name": (self.ed_name.text() or "").strip() or svc.default_project_name(),
             "idea": self.ed_idea.toPlainText(),
             "product_main": self.ed_product.toPlainText(),
             "script_style": self.cb_style.currentText(),
@@ -858,7 +947,11 @@ class VideoBanHangPanel(QWidget):
             "duration_sec": int(self.sp_duration.value()),
             "videos_count": int(self.sp_videos.value()),
             "ratio": self.cb_ratio.currentText(),
-            "speech_lang": self.cb_lang.currentText().split(" - ")[0] if " - " in self.cb_lang.currentText() else self.cb_lang.currentText(),  # PR#5: Extract language code
+            "speech_lang": (
+                self.cb_lang.currentText().split(" - ")[0]
+                if " - " in self.cb_lang.currentText()
+                else self.cb_lang.currentText()
+            ),  # PR#5: Extract language code
             "social_platform": self.cb_social.currentText(),
             "first_model_json": first_model_json,
             "product_count": len(self.prod_paths),
@@ -875,6 +968,7 @@ class VideoBanHangPanel(QWidget):
     def _copy_to_clipboard(self, text):
         """Copy to clipboard"""
         from PyQt5.QtWidgets import QApplication
+
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
         self._append_log("Đã copy vào clipboard")
@@ -917,15 +1011,15 @@ class VideoBanHangPanel(QWidget):
             self.last_outline = outline
 
             # Cache outline
-            self.cache['outline'] = outline
+            self.cache["outline"] = outline
 
             # Cache scene prompts
-            for scene in outline.get('scenes', []):
-                scene_idx = scene.get('index', 0)
-                self.cache['scene_prompts'][scene_idx] = {
-                    'video': scene.get('prompt_video'),
-                    'image': scene.get('prompt_image'),
-                    'speech': scene.get('speech')
+            for scene in outline.get("scenes", []):
+                scene_idx = scene.get("index", 0)
+                self.cache["scene_prompts"][scene_idx] = {
+                    "video": scene.get("prompt_video"),
+                    "image": scene.get("prompt_image"),
+                    "speech": scene.get("speech"),
                 }
 
             social_media = outline.get("social_media", {})
@@ -940,8 +1034,10 @@ class VideoBanHangPanel(QWidget):
                     hashtags = " ".join(version.get("hashtags", []))
 
                     # Combined format
-                    combined_text = f"=== Phiên bản {i+1} ===\n\n{caption}\n\n{hashtags}\n\n{'=' * 40}"
-                    widget_data['combined'].setPlainText(combined_text)
+                    combined_text = (
+                        f"=== Phiên bản {i+1} ===\n\n{caption}\n\n{hashtags}\n\n{'=' * 40}"
+                    )
+                    widget_data["combined"].setPlainText(combined_text)
 
             self._display_scene_cards(outline.get("scenes", []))
 
@@ -961,8 +1057,9 @@ class VideoBanHangPanel(QWidget):
     def _on_script_error(self, error_msg):
         """Script error"""
         if error_msg.startswith("MissingAPIKey:"):
-            QMessageBox.warning(self, "Thiếu API Key",
-                              "Chưa nhập Google API Key trong tab Cài đặt.")
+            QMessageBox.warning(
+                self, "Thiếu API Key", "Chưa nhập Google API Key trong tab Cài đặt."
+            )
             self._append_log("❌ Thiếu Google API Key")
         else:
             QMessageBox.critical(self, "Lỗi", error_msg)
@@ -981,25 +1078,26 @@ class VideoBanHangPanel(QWidget):
         self.scene_images = {}
 
         for i, scene in enumerate(scenes):
-            scene_idx = scene.get('index', i + 1)
+            scene_idx = scene.get("index", i + 1)
 
             # Use SceneResultCard with alternating colors
             card = SceneResultCard(scene_idx, scene, alternating_color=(i % 2 == 1))
             self.scenes_layout.insertWidget(i, card)
 
             self.scene_cards.append(card)
-            self.scene_images[scene_idx] = {'card': card, 'path': None}
+            self.scene_images[scene_idx] = {"card": card, "path": None}
 
     def _on_generate_images(self):
         """Generate images - with cache validation"""
         # Validate cache
-        if not self.cache['outline']:
-            QMessageBox.warning(self, "Chưa có kịch bản",
-                              "Vui lòng viết kịch bản trước. (Cache rỗng)")
+        if not self.cache["outline"]:
+            QMessageBox.warning(
+                self, "Chưa có kịch bản", "Vui lòng viết kịch bản trước. (Cache rỗng)"
+            )
             return
 
         cfg = self._collect_cfg()
-        use_whisk = (cfg.get("image_model") == "Whisk")
+        use_whisk = cfg.get("image_model") == "Whisk"
 
         # Get model paths from ModelSelectorWidget
         model_paths = cfg.get("model_paths", [])
@@ -1009,9 +1107,7 @@ class VideoBanHangPanel(QWidget):
         self.btn_stop.setEnabled(True)  # PR#4: Enable stop button
 
         self.img_worker = ImageGenerationWorker(
-            self.cache['outline'], cfg,
-            model_paths, self.prod_paths,
-            use_whisk
+            self.cache["outline"], cfg, model_paths, self.prod_paths, use_whisk
         )
 
         self.img_worker.progress.connect(self._append_log)
@@ -1027,17 +1123,17 @@ class VideoBanHangPanel(QWidget):
         dirs = svc.ensure_project_dirs(cfg["project_name"])
         img_path = dirs["preview"] / f"scene_{scene_idx}.png"
 
-        with open(img_path, 'wb') as f:
+        with open(img_path, "wb") as f:
             f.write(img_data)
 
         # Cache the image
-        self.cache['scene_images'][scene_idx] = str(img_path)
+        self.cache["scene_images"][scene_idx] = str(img_path)
 
         if scene_idx in self.scene_images:
-            card = self.scene_images[scene_idx].get('card')
+            card = self.scene_images[scene_idx].get("card")
             if card:
                 card.set_image_path(str(img_path))
-            self.scene_images[scene_idx]['path'] = str(img_path)
+            self.scene_images[scene_idx]["path"] = str(img_path)
 
         self._append_log(f"✓ Ảnh cảnh {scene_idx} đã sẵn sàng")
 
@@ -1047,16 +1143,16 @@ class VideoBanHangPanel(QWidget):
         dirs = svc.ensure_project_dirs(cfg["project_name"])
         img_path = dirs["preview"] / f"thumbnail_v{version_idx+1}.png"
 
-        with open(img_path, 'wb') as f:
+        with open(img_path, "wb") as f:
             f.write(img_data)
 
         # Cache the thumbnail
-        self.cache['thumbnails'][version_idx] = str(img_path)
+        self.cache["thumbnails"][version_idx] = str(img_path)
 
         if version_idx < len(self.thumbnail_widgets):
             widget_data = self.thumbnail_widgets[version_idx]
             pixmap = QPixmap(str(img_path))
-            widget_data['thumbnail'].setPixmap(
+            widget_data["thumbnail"].setPixmap(
                 pixmap.scaled(270, 480, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
 
@@ -1076,32 +1172,35 @@ class VideoBanHangPanel(QWidget):
     def _on_generate_video(self):
         """Generate video - with cache validation"""
         # Validate cache
-        if not self.cache['outline']:
-            QMessageBox.warning(self, "Chưa có kịch bản",
-                              "Vui lòng viết kịch bản trước. (Cache rỗng)")
+        if not self.cache["outline"]:
+            QMessageBox.warning(
+                self, "Chưa có kịch bản", "Vui lòng viết kịch bản trước. (Cache rỗng)"
+            )
             return
 
-        if not self.cache['scene_images']:
-            QMessageBox.warning(self, "Chưa có ảnh cảnh",
-                              "Vui lòng tạo ảnh trước. (Cache chưa có ảnh)")
+        if not self.cache["scene_images"]:
+            QMessageBox.warning(
+                self, "Chưa có ảnh cảnh", "Vui lòng tạo ảnh trước. (Cache chưa có ảnh)"
+            )
             return
 
         self._append_log("Bắt đầu tạo video...")
         self._append_log(f"✓ Sử dụng cache: {len(self.cache['scene_images'])} ảnh cảnh")
         self.btn_video.setEnabled(False)
 
-        QMessageBox.information(self, "Thông báo",
-                              "Chức năng tạo video sẽ được triển khai trong phiên bản tiếp theo.")
+        QMessageBox.information(
+            self, "Thông báo", "Chức năng tạo video sẽ được triển khai trong phiên bản tiếp theo."
+        )
 
         self.btn_video.setEnabled(True)
 
     def stop_processing(self):
         """PR#4: Stop all workers"""
-        if hasattr(self, 'script_worker') and self.script_worker and self.script_worker.isRunning():
+        if hasattr(self, "script_worker") and self.script_worker and self.script_worker.isRunning():
             self.script_worker.terminate()
             self._append_log("[INFO] Đã dừng script worker")
 
-        if hasattr(self, 'image_worker') and self.image_worker and self.image_worker.isRunning():
+        if hasattr(self, "image_worker") and self.image_worker and self.image_worker.isRunning():
             self.image_worker.terminate()
             self._append_log("[INFO] Đã dừng image worker")
 
@@ -1113,5 +1212,6 @@ class VideoBanHangPanel(QWidget):
         self.btn_stop.setEnabled(False)
 
         self._append_log("[INFO] Đã dừng xử lý")
+
 
 # FIXED: Removed QSS autoload block (lines 1000-1034) to prevent theme conflicts
