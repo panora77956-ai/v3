@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QFormLayout,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -408,6 +409,10 @@ class VideoBanHangPanel(QWidget):
             "thumbnails": {},
             "character_bible": None,
         }
+        
+        # Initialize download settings (moved to Settings tab, but keep for compatibility)
+        self.chk_auto_download = None
+        self.ed_download_path = None
 
         self._build_ui()
 
@@ -439,105 +444,111 @@ class VideoBanHangPanel(QWidget):
         main_layout.addWidget(self.right_widget, 1)
 
     def _build_left_column(self, layout):
-        """Build left column with project settings"""
-
-        # Project info (PR#5: Add icon)
-        gb_proj = self._create_group("📁 Dự án")
-        g = QGridLayout(gb_proj)
-        g.setVerticalSpacing(6)
-
+        """Build left column with fixed project info and collapsible sections"""
+        
+        # ===== FIXED SECTION (Always Visible) =====
+        
+        # Project name - Full width, no truncation
+        lbl_proj = QLabel("📁 Dự án")
+        lbl_proj.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        layout.addWidget(lbl_proj)
+        
+        lbl_name = QLabel("Tên dự án:")
+        lbl_name.setFont(QFont("Segoe UI", 11))
+        layout.addWidget(lbl_name)
+        
         self.ed_name = QLineEdit()
-        self.ed_name.setFont(FONT_INPUT)
-        self.ed_name.setPlaceholderText("Tự tạo nếu để trống")
+        self.ed_name.setFont(QFont("Segoe UI", 13))
+        self.ed_name.setPlaceholderText("Nhập tên dự án...")
         self.ed_name.setText(svc.default_project_name())
-        self.ed_name.setMinimumHeight(36)  # Issue 2: Increased from 32px to 36px for better visibility
+        self.ed_name.setMinimumHeight(36)
+        layout.addWidget(self.ed_name)
+        
+        # Idea input - 3 fixed lines, 13px
+        lbl_idea = QLabel("Ý tưởng:")
+        lbl_idea.setFont(QFont("Segoe UI", 11))
+        layout.addWidget(lbl_idea)
+        
+        self.ed_idea = QTextEdit()
+        self.ed_idea.setFont(QFont("Segoe UI", 13))
+        self.ed_idea.setPlaceholderText("Nhập ý tưởng cho video...")
+        self.ed_idea.setFixedHeight(80)  # ~3 lines at 13px
+        layout.addWidget(self.ed_idea)
+        
+        # Content input - 10 fixed lines, 13px
+        lbl_content = QLabel("Nội dung:")
+        lbl_content.setFont(QFont("Segoe UI", 11))
+        layout.addWidget(lbl_content)
+        
+        self.ed_product = QTextEdit()
+        self.ed_product.setFont(QFont("Segoe UI", 13))
+        self.ed_product.setPlaceholderText("Nhập nội dung chi tiết...")
+        self.ed_product.setFixedHeight(260)  # ~10 lines at 13px
+        layout.addWidget(self.ed_product)
+        
+        layout.addSpacing(16)
 
-        self.ed_idea = QPlainTextEdit()
-        self.ed_idea.setFont(FONT_INPUT)
-        self.ed_idea.setMinimumHeight(80)  # Increased from 60px
-        self.ed_idea.setMaximumHeight(80)
-        self.ed_idea.setPlaceholderText("Ý tưởng (2–3 dòng)")
-
-        self.ed_product = QPlainTextEdit()
-        self.ed_product.setFont(FONT_INPUT)
-        self.ed_product.setMinimumHeight(100)  # Increased from 80px
-        self.ed_product.setMaximumHeight(100)
-        self.ed_product.setPlaceholderText("Nội dung chính / Đặc điểm sản phẩm")
-
-        g.addWidget(QLabel("Tên dự án:"), 0, 0)
-        g.addWidget(self.ed_name, 1, 0)
-        g.addWidget(QLabel("Ý tưởng:"), 2, 0)
-        g.addWidget(self.ed_idea, 3, 0)
-        g.addWidget(QLabel("Nội dung:"), 4, 0)
-        g.addWidget(self.ed_product, 5, 0)
-
-        for w in gb_proj.findChildren(QLabel):
-            w.setFont(FONT_LABEL)
-            w.setStyleSheet("color: #424242; font-weight: 500;")
-
-        gb_proj.setMinimumHeight(280)
-        layout.addWidget(gb_proj)
-
-        # Model selector widget with toggle (PR#17: Hidden by default)
-        group_models = QGroupBox("👤 Thông tin người mẫu")
-        group_models_layout = QVBoxLayout()
-
-        # Button to show/hide model selector
-        self.btn_toggle_models = QPushButton("➕ Thêm người mẫu")
-        self.btn_toggle_models.setMinimumHeight(32)
-        self.btn_toggle_models.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            QPushButton:hover { background-color: #388E3C; }
-        """
-        )
-        self.btn_toggle_models.clicked.connect(self._toggle_model_selector)
-
-        # ModelSelectorWidget container (hidden by default)
-        self.model_selector_container = QWidget()
-        self.model_selector_container.setVisible(False)  # HIDDEN BY DEFAULT
-        model_container_layout = QVBoxLayout(self.model_selector_container)
-        model_container_layout.setContentsMargins(0, 0, 0, 0)
-
-        # ModelSelectorWidget inside container (no title since parent has it)
+        # ===== COLLAPSIBLE SECTIONS (Accordion) =====
+        
+        # Model section
+        self.gb_model = self._create_collapsible_group("👤 Thông tin người mẫu")
+        self.gb_model.setCheckable(True)
+        self.gb_model.setChecked(False)  # Collapsed by default
+        self.gb_model.toggled.connect(lambda checked: self._on_section_toggled(self.gb_model, checked))
+        
+        model_layout = QVBoxLayout()
+        
+        # Model selector widget
         self.model_selector = ModelSelectorWidget(title="")
-        model_container_layout.addWidget(self.model_selector)
+        model_layout.addWidget(self.model_selector)
+        
+        # Add/Hide buttons
+        btn_row = QHBoxLayout()
+        btn_add = QPushButton("➕ Thêm người mẫu")
+        btn_add.clicked.connect(self.model_selector._add_model)
+        btn_row.addWidget(btn_add)
+        
+        btn_hide = QPushButton("➖ Ẩn người mẫu")
+        btn_hide.clicked.connect(lambda: self.gb_model.setChecked(False))
+        btn_row.addWidget(btn_hide)
+        model_layout.addLayout(btn_row)
+        
+        self.gb_model.setLayout(model_layout)
+        layout.addWidget(self.gb_model)
 
-        # Add to GroupBox
-        group_models_layout.addWidget(self.btn_toggle_models)
-        group_models_layout.addWidget(self.model_selector_container)
-        group_models.setLayout(group_models_layout)
-
-        layout.addWidget(group_models)
-
-        # Product images (PR#5: Add icon)
-        gb_prod = self._create_group("📦 Ảnh sản phẩm")
-        pv = QVBoxLayout(gb_prod)
-
+        # Product images section
+        self.gb_products = self._create_collapsible_group("📦 Ảnh sản phẩm")
+        self.gb_products.setCheckable(True)
+        self.gb_products.setChecked(False)
+        self.gb_products.toggled.connect(lambda checked: self._on_section_toggled(self.gb_products, checked))
+        
+        prod_layout = QVBoxLayout()
+        
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
         btn_prod.setObjectName("btn_primary")
-        btn_prod.setMinimumHeight(32)  # 32px per spec (action buttons are 42px)
+        btn_prod.setMinimumHeight(32)
         btn_prod.clicked.connect(self._pick_product_images)
-        pv.addWidget(btn_prod)
-
+        prod_layout.addWidget(btn_prod)
+        
         self.prod_thumb_container = QHBoxLayout()
         self.prod_thumb_container.setSpacing(4)
-        pv.addLayout(self.prod_thumb_container)
+        prod_layout.addLayout(self.prod_thumb_container)
+        
+        self.gb_products.setLayout(prod_layout)
+        layout.addWidget(self.gb_products)
 
-        gb_prod.setMinimumHeight(120)
-        layout.addWidget(gb_prod)
-
-        # Video settings (Grid 2x5) (PR#5: Add icon)
-        gb_cfg = self._create_group("⚙️ Cài đặt video")
-        s = QGridLayout(gb_cfg)
-        s.setVerticalSpacing(8)
-        s.setHorizontalSpacing(10)
-
+        # Video settings section
+        self.gb_settings = self._create_collapsible_group("⚙️ Cài đặt video")
+        self.gb_settings.setCheckable(True)
+        self.gb_settings.setChecked(False)
+        self.gb_settings.toggled.connect(lambda checked: self._on_section_toggled(self.gb_settings, checked))
+        
+        settings_layout = QVBoxLayout()
+        
+        # Settings form using QFormLayout for cleaner layout
+        form = QFormLayout()
+        form.setSpacing(8)
+        
         def make_widget(widget_class, **kwargs):
             w = widget_class()
             w.setMinimumHeight(32)
@@ -545,25 +556,34 @@ class VideoBanHangPanel(QWidget):
                 if hasattr(w, k):
                     getattr(w, k)(v) if callable(getattr(w, k)) else setattr(w, k, v)
             return w
-
+        
+        # Style
         self.cb_style = make_widget(QComboBox)
         self.cb_style.addItems(["Viral", "KOC Review", "Kể chuyện"])
-
+        form.addRow("Phong cách KB:", self.cb_style)
+        
+        # Image style
         self.cb_imgstyle = make_widget(QComboBox)
         self.cb_imgstyle.addItems(["Điện ảnh", "Hiện đại/Trendy", "Anime", "Hoạt hình 3D"])
-
+        form.addRow("Phong cách HA:", self.cb_imgstyle)
+        
+        # Script model
         self.cb_script_model = make_widget(QComboBox)
         self.cb_script_model.addItems(["Gemini 2.5 Flash (mặc định)", "ChatGPT4 Turbo (tuỳ chọn)"])
-
+        form.addRow("Model KB:", self.cb_script_model)
+        
+        # Image model
         self.cb_image_model = make_widget(QComboBox)
         self.cb_image_model.addItems(["Gemini", "Whisk"])
-
+        form.addRow("Model tạo ảnh:", self.cb_image_model)
+        
+        # Voice
         self.ed_voice = make_widget(QLineEdit)
         self.ed_voice.setPlaceholderText("ElevenLabs VoiceID")
-
-        # Issue 3: Language selector without prefixes - display only language names
+        form.addRow("Lời thoại:", self.ed_voice)
+        
+        # Language
         self.cb_lang = make_widget(QComboBox)
-        # Display names without language code prefixes
         LANGUAGES = [
             "Tiếng Việt (Vietnamese)",
             "Tiếng Anh (English)",
@@ -593,7 +613,7 @@ class VideoBanHangPanel(QWidget):
             "Tiếng Na Uy (Norwegian)",
         ]
         self.cb_lang.addItems(LANGUAGES)
-
+        
         # Mapping dictionary to convert display names to language codes
         self.LANGUAGE_MAP = {
             "Tiếng Việt (Vietnamese)": "vi",
@@ -623,97 +643,47 @@ class VideoBanHangPanel(QWidget):
             "Tiếng Thụy Điển (Swedish)": "sv",
             "Tiếng Na Uy (Norwegian)": "no",
         }
-
+        form.addRow("Ngôn ngữ:", self.cb_lang)
+        
+        # Duration
         self.sp_duration = make_widget(QSpinBox)
         self.sp_duration.setRange(8, 1200)
         self.sp_duration.setSingleStep(8)
         self.sp_duration.setValue(32)
+        self.sp_duration.setSuffix(" s")
         self.sp_duration.valueChanged.connect(self._update_scenes)
-
+        form.addRow("Thời lượng:", self.sp_duration)
+        
+        # Videos count
         self.sp_videos = make_widget(QSpinBox)
         self.sp_videos.setRange(1, 4)
         self.sp_videos.setValue(1)
-
+        form.addRow("Số video/cảnh:", self.sp_videos)
+        
+        # Aspect ratio
         self.cb_ratio = make_widget(QComboBox)
         self.cb_ratio.addItems(["9:16", "16:9", "1:1", "4:5"])
-
+        form.addRow("Tỉ lệ:", self.cb_ratio)
+        
+        # Social platform
         self.cb_social = make_widget(QComboBox)
         self.cb_social.addItems(["TikTok", "Facebook", "YouTube"])
-
+        form.addRow("Nền tảng:", self.cb_social)
+        
+        settings_layout.addLayout(form)
+        
+        # Scene count label
         self.lb_scenes = QLabel("Số cảnh: 4")
         self.lb_scenes.setFont(FONT_LABEL)
+        self.lb_scenes.setStyleSheet("color: #424242; font-weight: 500; padding-top: 8px;")
+        settings_layout.addWidget(self.lb_scenes)
+        
+        self.gb_settings.setLayout(settings_layout)
+        layout.addWidget(self.gb_settings)
 
-        # Grid layout
-        row = 0
-        s.addWidget(QLabel("Phong cách KB:"), row, 0)
-        s.addWidget(self.cb_style, row, 1)
-        s.addWidget(QLabel("Phong cách HA:"), row, 2)
-        s.addWidget(self.cb_imgstyle, row, 3)
-
-        row += 1
-        s.addWidget(QLabel("Model KB:"), row, 0)
-        s.addWidget(self.cb_script_model, row, 1)
-        s.addWidget(QLabel("Model tạo ảnh:"), row, 2)
-        s.addWidget(self.cb_image_model, row, 3)
-
-        row += 1
-        s.addWidget(QLabel("Lời thoại:"), row, 0)
-        s.addWidget(self.ed_voice, row, 1)
-        s.addWidget(QLabel("Ngôn ngữ:"), row, 2)
-        s.addWidget(self.cb_lang, row, 3)
-
-        row += 1
-        s.addWidget(QLabel("Thời lượng (s):"), row, 0)
-        s.addWidget(self.sp_duration, row, 1)
-        s.addWidget(QLabel("Số video/cảnh:"), row, 2)
-        s.addWidget(self.sp_videos, row, 3)
-
-        row += 1
-        s.addWidget(QLabel("Tỉ lệ:"), row, 0)
-        s.addWidget(self.cb_ratio, row, 1)
-        s.addWidget(QLabel("Nền tảng:"), row, 2)
-        s.addWidget(self.cb_social, row, 3)
-
-        row += 1
-        s.addWidget(self.lb_scenes, row, 0, 1, 4)
-
-        for w in gb_cfg.findChildren(QLabel):
-            w.setFont(FONT_LABEL)
-            w.setStyleSheet("color: #424242; font-weight: 500;")
-
-        gb_cfg.setMinimumHeight(220)
-        layout.addWidget(gb_cfg)
-
-        # Auto-download group
-        gb_download = self._create_group("💾 Tự động tải")
-        dl_layout = QVBoxLayout(gb_download)
-
-        self.chk_auto_download = QCheckBox("Tự động tải video về thư mục Downloads")
-        self.chk_auto_download.setChecked(True)  # Default ON
-        self.chk_auto_download.setFont(FONT_LABEL)
-        dl_layout.addWidget(self.chk_auto_download)
-
-        # Path display
-        path_label = QLabel("Thư mục:")
-        path_label.setFont(FONT_LABEL)
-        dl_layout.addWidget(path_label)
-
-        self.ed_download_path = QLineEdit()
-        self.ed_download_path.setFont(FONT_INPUT)
-        self.ed_download_path.setText(str(Path.home() / "Downloads" / "VideoSuperUltra"))
-        self.ed_download_path.setReadOnly(True)
-        dl_layout.addWidget(self.ed_download_path)
-
-        btn_change_path = QPushButton("📁 Đổi thư mục")
-        btn_change_path.setObjectName("btn_primary")
-        btn_change_path.setMinimumHeight(28)
-        btn_change_path.clicked.connect(self._change_download_path)
-        dl_layout.addWidget(btn_change_path)
-
-        gb_download.setMinimumHeight(140)
-        layout.addWidget(gb_download)
-
-        layout.addStretch(1)
+        # NOTE: REMOVED "💾 Tự động tải" section - use Settings tab instead
+        
+        layout.addStretch()
 
         # Action buttons at bottom of left column
         self._build_action_buttons(layout)
@@ -1073,41 +1043,39 @@ class VideoBanHangPanel(QWidget):
         """Update scene count label"""
         n = max(1, math.ceil(self.sp_duration.value() / 8.0))
         self.lb_scenes.setText(f"Số cảnh: {n}")
-
-    def _toggle_model_selector(self):
-        """Toggle model selector visibility (PR#17)"""
-        is_visible = self.model_selector_container.isVisible()
-        self.model_selector_container.setVisible(not is_visible)
-
-        # Update button text and style
-        if is_visible:
-            # Hiding - show green "Add" button
-            self.btn_toggle_models.setText("➕ Thêm người mẫu")
-            self.btn_toggle_models.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #4CAF50;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 14px;
-                }
-                QPushButton:hover { background-color: #388E3C; }
-            """
-            )
-        else:
-            # Showing - change to orange "Hide" button
-            self.btn_toggle_models.setText("➖ Ẩn người mẫu")
-            self.btn_toggle_models.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #FF9800;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 14px;
-                }
-                QPushButton:hover { background-color: #F57C00; }
-            """
-            )
+    
+    def _on_section_toggled(self, toggled_section, checked):
+        """Handle section toggle - accordion behavior"""
+        if checked:
+            # Collapse all other sections
+            for section in [self.gb_model, self.gb_products, self.gb_settings]:
+                if section != toggled_section:
+                    section.setChecked(False)
+    
+    def _create_collapsible_group(self, title):
+        """Create collapsible group box"""
+        gb = QGroupBox(title)
+        gb.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        gb.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 16px;
+                background: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 4px 12px;
+                background: white;
+                border-radius: 4px;
+            }
+            QGroupBox:checked {
+                border: 2px solid #2196F3;
+            }
+        """)
+        return gb
 
     def _pick_product_images(self):
         """Pick product images"""
@@ -1513,7 +1481,11 @@ class VideoBanHangPanel(QWidget):
         self._append_log("[INFO] Đã dừng xử lý")
 
     def _change_download_path(self):
-        """Change download folder via file dialog"""
+        """Change download folder via file dialog (moved to Settings tab)"""
+        if self.ed_download_path is None:
+            self._append_log("⚠ Chức năng này đã được chuyển sang tab Cài đặt")
+            return
+            
         current_path = self.ed_download_path.text()
         
         new_path = QFileDialog.getExistingDirectory(
@@ -1528,13 +1500,21 @@ class VideoBanHangPanel(QWidget):
             self._append_log(f"✓ Đổi thư mục tải: {new_path}")
 
     def _auto_download_video(self, source_path):
-        """Copy video to download folder and open folder
+        """Copy video to download folder and open folder (moved to Settings tab)
         
         Args:
             source_path (str): Path to the source video file to download
         """
+        # Default download path if not set via Settings tab
+        if self.ed_download_path is None:
+            download_dir = Path.home() / "Downloads" / "VideoSuperUltra"
+        else:
+            try:
+                download_dir = Path(self.ed_download_path.text())
+            except:
+                download_dir = Path.home() / "Downloads" / "VideoSuperUltra"
+        
         try:
-            download_dir = Path(self.ed_download_path.text())
             download_dir.mkdir(parents=True, exist_ok=True)
             
             source = Path(source_path)
