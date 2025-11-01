@@ -218,8 +218,10 @@ def generate_image_with_rate_limit(
         elif model.lower() == "imagen_4":
             def api_call_with_key(api_key: str) -> bytes:
                 """Make Imagen 4 API call with the given key"""
-                # Imagen 4 endpoint (placeholder - adjust based on actual API)
-                # This is a simplified example - actual implementation may vary
+                # NOTE: Imagen 4 endpoint is PLACEHOLDER - not verified against actual Google API
+                # TODO: Replace with actual Imagen 4 endpoint when available
+                # Current implementation uses Gemini base URL as example only
+                # VERIFY endpoint exists before using in production
                 url = f"{GEMINI_BASE}/models/imagen-4.0-generate:generateContent?key={api_key}"
                 
                 payload = {

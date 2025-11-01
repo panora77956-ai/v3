@@ -49,6 +49,7 @@ class APIKeyRotationManager:
     INITIAL_BACKOFF_SECONDS = 2.0  # Start with 2 seconds
     COOLDOWN_SECONDS = 60.0  # 60 seconds cooldown after exhausting retries
     MIN_CALL_INTERVAL_SECONDS = 2.0  # Minimum 2 seconds between calls on same key
+    EXHAUSTED_KEYS_RETRY_INTERVAL_SECONDS = 5.0  # Wait 5s before rechecking when all keys exhausted
     
     def __init__(self, api_keys: List[str], log_callback: Optional[Callable[[str], None]] = None):
         """
@@ -163,8 +164,8 @@ class APIKeyRotationManager:
                 
                 if not available_keys:
                     self._log("[EXHAUSTED] All keys are in cooldown. Waiting for cooldown to expire...")
-                    # Wait a bit and check again
-                    time.sleep(5.0)
+                    # Wait and check again
+                    time.sleep(self.EXHAUSTED_KEYS_RETRY_INTERVAL_SECONDS)
                     available_keys = self._get_available_keys()
                     
                     if not available_keys:
