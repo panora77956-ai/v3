@@ -32,10 +32,9 @@ def _lab(text):
     return l
 
 def _decorate_group(gb: QGroupBox):
-    gb.setStyleSheet(
-        'QGroupBox{font-weight:bold; font-size:14px; background:#FAFAFF; '
-        'border:1px solid #B3E5FC; border-radius:8px; margin-top:6px; padding:6px;}'
-    )
+    # PR#6: Part E #26 - Compact spacing 6px, dark theme styling
+    # Styling is now handled by unified theme, so this is optional
+    pass
 
 class SettingsPanel(QWidget):
     def __init__(self, parent=None):
@@ -119,8 +118,9 @@ class SettingsPanel(QWidget):
 
         # Dòng 5: Lưu + Info app ở bên phải
         row5 = QHBoxLayout()
-        self.btn_save = QPushButton('Lưu cấu hình'); self.btn_save.setFont(FONT_BTN_BIG)
-        self.btn_save.setObjectName('btn_save_luu')
+        self.btn_save = QPushButton('💾 Lưu cấu hình'); self.btn_save.setFont(FONT_BTN_BIG)
+        self.btn_save.setObjectName('btn_save')  # Green color
+        self.btn_save.setMinimumHeight(44)
         self.lb_saved = QLabel(''); self.lb_saved.setFont(FONT_BTN_BIG)
         row5.addWidget(self.btn_save); row5.addWidget(self.lb_saved); row5.addStretch(1)
 

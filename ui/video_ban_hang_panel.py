@@ -566,37 +566,36 @@ class VideoBanHangPanel(QWidget):
         
         layout.addWidget(gb_log, 1)
         
-        # PR#5: Auto workflow button + increased button heights
-        # Auto workflow button (3 steps in 1)
+        # Auto workflow button (3 steps in 1) (PR#6: Part C #13)
         self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
-        self.btn_auto.setObjectName('btn_success_auto')
+        self.btn_auto.setObjectName('btn_warning')  # Orange color
         self.btn_auto.setMinimumHeight(48)
         self.btn_auto.clicked.connect(self._on_auto_workflow)
         layout.addWidget(self.btn_auto)
         
-        # 3 buttons at bottom (PR#5: height 40px+)
+        # 3 buttons at bottom (PR#6: Part C #16-18)
         btn_layout = QHBoxLayout()
         
         self.btn_script = QPushButton("📝 Viết kịch bản")
-        self.btn_script.setObjectName('btn_primary_script')
+        self.btn_script.setObjectName('btn_primary')  # Blue color
         self.btn_script.setMinimumHeight(42)
         self.btn_script.clicked.connect(self._on_write_script)
         
         self.btn_images = QPushButton("🎨 Tạo ảnh")
-        self.btn_images.setObjectName('btn_warning_images')
+        self.btn_images.setObjectName('btn_warning')  # Orange color
         self.btn_images.setMinimumHeight(42)
         self.btn_images.clicked.connect(self._on_generate_images)
         self.btn_images.setEnabled(False)
         
         self.btn_video = QPushButton("🎬 Video")
-        self.btn_video.setObjectName('btn_success_video')
+        self.btn_video.setObjectName('btn_success')  # Green color
         self.btn_video.setMinimumHeight(42)
         self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
         
-        # PR#4: Add Stop button (PR#5: height 42px)
+        # Stop button (PR#6: Part C #16-18)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_danger_stop")
+        self.btn_stop.setObjectName("btn_gray")  # Gray color
         self.btn_stop.setMinimumHeight(42)
         self.btn_stop.setMaximumWidth(80)
         self.btn_stop.setEnabled(False)

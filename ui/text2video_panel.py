@@ -80,13 +80,13 @@ class Text2VideoPane(QWidget):
         self.cb_upscale.setStyleSheet("font-size: 14px; font-weight: 700;")
         colL.addWidget(self.cb_upscale)
 
-        # Row 6: Single auto button + Stop button (PR#4)
+        # Row 6: Single auto button + Stop button (PR#6: Part B #7-8)
         hb = QHBoxLayout()
-        self.btn_auto = QPushButton("▶ Tạo video tự động (3 bước)")
-        self.btn_auto.setObjectName("btn_success")
+        self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
+        self.btn_auto.setObjectName("btn_warning")  # Orange color
         self.btn_auto.setMinimumHeight(44)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setObjectName("btn_gray")  # Gray color
         self.btn_stop.setMaximumWidth(80)
         self.btn_stop.setEnabled(False)
         hb.addWidget(self.btn_auto)
