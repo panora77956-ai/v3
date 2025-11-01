@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
 class SceneResultCard(QFrame):
     """
     Compact scene result card with:
-    - 160x90px image preview (50% size reduction)
+    - 80x80px image preview (compact size)
     - Alternating backgrounds (#FFFFFF / #E3F2FD)
     - Title, description, speech text
     - Action buttons: Prompt, Recreate, Generate Video
