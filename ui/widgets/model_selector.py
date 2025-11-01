@@ -22,7 +22,24 @@ from PyQt5.QtWidgets import (
 
 
 class ModelImageWidget(QLabel):
-    """Image widget with selection and delete - Issue 4"""
+    """
+    Image widget with selection and delete functionality.
+
+    Features:
+    - Click to select image (shows blue border highlight)
+    - Hover to show delete button (X in top-right corner)
+    - Visual feedback for selected state
+    - Pointer cursor on hover for better UX
+
+    Signals:
+    - clicked(int): Emitted when image is clicked, passes widget index
+    - delete_requested(int): Emitted when delete button is clicked
+
+    Usage:
+        widget = ModelImageWidget(image_path, index=0)
+        widget.clicked.connect(on_image_selected)
+        widget.delete_requested.connect(on_delete_image)
+    """
 
     clicked = pyqtSignal(int)  # Emit index when clicked
     delete_requested = pyqtSignal(int)
@@ -59,12 +76,15 @@ class ModelImageWidget(QLabel):
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.index)
+        super().mousePressEvent(event)
 
     def enterEvent(self, event):
         self.btn_delete.setVisible(True)
+        super().enterEvent(event)
 
     def leaveEvent(self, event):
         self.btn_delete.setVisible(False)
+        super().leaveEvent(event)
 
     def set_selected(self, selected):
         self.selected = selected
