@@ -6,12 +6,17 @@ FIXED: Removed QSS autoload block to prevent theme conflicts
 import datetime
 import math
 import os
+import platform
+import shutil
+import subprocess
 import time
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -38,6 +43,7 @@ from services import sales_video_service as svc
 from ui.widgets.model_selector import ModelSelectorWidget
 from ui.widgets.scene_result_card import SceneResultCard
 from ui.workers.script_worker import ScriptWorker
+from utils.image_utils import convert_to_bytes
 
 # Fonts
 FONT_LABEL = QFont()
@@ -213,16 +219,16 @@ class ImageGenerationWorker(QThread):
             from services.core.config import load as load_cfg
             cfg_data = load_cfg()
             api_keys = cfg_data.get('google_api_keys', [])
-            
+
             if not api_keys:
                 self.progress.emit("[ERROR] Không có Google API keys trong config")
                 self.finished.emit(False)
                 return
-            
+
             # Get aspect ratio and model from config
             aspect_ratio = self.cfg.get('ratio', '9:16')
             model = 'gemini' if 'Gemini' in self.cfg.get('image_model', 'Gemini') else 'imagen_4'
-            
+
             self.progress.emit(f"[INFO] Sử dụng {len(api_keys)} API keys, model: {model}, tỷ lệ: {aspect_ratio}")
             
             # Log character bible usage
@@ -284,7 +290,7 @@ class ImageGenerationWorker(QThread):
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
 
                         # Use rate-limited generation with API key rotation
-                        img_data = image_gen_service.generate_image_with_rate_limit(
+                        img_data_url = image_gen_service.generate_image_with_rate_limit(
                             prompt=prompt,
                             api_keys=api_keys,
                             model=model,
@@ -293,12 +299,19 @@ class ImageGenerationWorker(QThread):
                             logger=lambda msg: self.progress.emit(msg),
                         )
 
-                        if img_data:
-                            self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                        if img_data_url:
+                            # Convert to bytes, handling both formats
+                            img_data, error = convert_to_bytes(img_data_url)
+                            if img_data:
+                                self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                            else:
+                                self.progress.emit(f"Cảnh {scene.get('index')}: {error}")
                         else:
                             self.progress.emit(f"Cảnh {scene.get('index')}: Không tạo được ảnh")
+                            img_data = None
                     except Exception as e:
                         self.progress.emit(f"Gemini failed for scene {scene.get('index')}: {e}")
+                        img_data = None
 
                 if img_data:
                     self.scene_image_ready.emit(scene.get("index"), img_data)
@@ -325,7 +338,7 @@ class ImageGenerationWorker(QThread):
 
                 try:
                     # Use rate-limited generation with API key rotation
-                    thumb_data = image_gen_service.generate_image_with_rate_limit(
+                    thumb_data_url = image_gen_service.generate_image_with_rate_limit(
                         prompt=prompt,
                         api_keys=api_keys,
                         model=model,
@@ -334,26 +347,32 @@ class ImageGenerationWorker(QThread):
                         logger=lambda msg: self.progress.emit(msg)
                     )
 
-                    if thumb_data:
-                        import tempfile
+                    if thumb_data_url:
+                        # Convert to bytes, handling both formats
+                        thumb_data, error = convert_to_bytes(thumb_data_url)
+                        
+                        if thumb_data:
+                            import tempfile
 
-                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                            tmp.write(thumb_data)
-                            tmp_path = tmp.name
+                            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                                tmp.write(thumb_data)
+                                tmp_path = tmp.name
 
-                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_out:
-                            out_path = tmp_out.name
+                            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_out:
+                                out_path = tmp_out.name
 
-                        sscript.generate_thumbnail_with_text(tmp_path, text_overlay, out_path)
+                            sscript.generate_thumbnail_with_text(tmp_path, text_overlay, out_path)
 
-                        with open(out_path, "rb") as f:
-                            final_thumb = f.read()
+                            with open(out_path, "rb") as f:
+                                final_thumb = f.read()
 
-                        os.unlink(tmp_path)
-                        os.unlink(out_path)
+                            os.unlink(tmp_path)
+                            os.unlink(out_path)
 
-                        self.thumbnail_ready.emit(i, final_thumb)
-                        self.progress.emit(f"Thumbnail {i+1}: ✓")
+                            self.thumbnail_ready.emit(i, final_thumb)
+                            self.progress.emit(f"Thumbnail {i+1}: ✓")
+                        else:
+                            self.progress.emit(f"Thumbnail {i+1}: {error}")
                     else:
                         self.progress.emit(f"Thumbnail {i+1}: Không tạo được")
 
@@ -574,7 +593,7 @@ class VideoBanHangPanel(QWidget):
             "Tiếng Na Uy (Norwegian)",
         ]
         self.cb_lang.addItems(LANGUAGES)
-        
+
         # Mapping dictionary to convert display names to language codes
         self.LANGUAGE_MAP = {
             "Tiếng Việt (Vietnamese)": "vi",
@@ -664,6 +683,36 @@ class VideoBanHangPanel(QWidget):
 
         gb_cfg.setMinimumHeight(220)
         layout.addWidget(gb_cfg)
+
+        # Auto-download group
+        gb_download = self._create_group("💾 Tự động tải")
+        dl_layout = QVBoxLayout(gb_download)
+
+        self.chk_auto_download = QCheckBox("Tự động tải video về thư mục Downloads")
+        self.chk_auto_download.setChecked(True)  # Default ON
+        self.chk_auto_download.setFont(FONT_LABEL)
+        dl_layout.addWidget(self.chk_auto_download)
+
+        # Path display
+        path_label = QLabel("Thư mục:")
+        path_label.setFont(FONT_LABEL)
+        dl_layout.addWidget(path_label)
+
+        self.ed_download_path = QLineEdit()
+        self.ed_download_path.setFont(FONT_INPUT)
+        self.ed_download_path.setText(str(Path.home() / "Downloads" / "VideoSuperUltra"))
+        self.ed_download_path.setReadOnly(True)
+        dl_layout.addWidget(self.ed_download_path)
+
+        btn_change_path = QPushButton("📁 Đổi thư mục")
+        btn_change_path.setObjectName("btn_primary")
+        btn_change_path.setMinimumHeight(28)
+        btn_change_path.clicked.connect(self._change_download_path)
+        dl_layout.addWidget(btn_change_path)
+
+        gb_download.setMinimumHeight(140)
+        layout.addWidget(gb_download)
+
         layout.addStretch(1)
 
         # Action buttons at bottom of left column
@@ -939,38 +988,75 @@ class VideoBanHangPanel(QWidget):
         return scroll
 
     def _build_social_tab(self):
-        """Build social media tab with combined caption + hashtags"""
+        """Build social media tab with improved formatting - Issue 5"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
 
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setSpacing(20)  # Issue 5: Increased from 16 for better separation
 
         self.social_version_widgets = []
         for i in range(3):
-            version_card = QGroupBox(f"=== Phiên bản {i+1} ===")
-
+            version_card = QGroupBox(f"📱 Phiên bản {i+1}")
             card_layout = QVBoxLayout(version_card)
+            card_layout.setSpacing(12)
 
-            # Combined text area for caption + hashtags
-            ed_combined = QTextEdit()
-            ed_combined.setReadOnly(True)
-            ed_combined.setMinimumHeight(120)
-            ed_combined.setPlaceholderText(
-                "Caption và hashtags sẽ hiển thị ở đây sau khi tạo kịch bản"
+            # Caption section
+            lbl_caption = QLabel("📝 Caption:")
+            lbl_caption.setFont(QFont("Segoe UI", 13, QFont.Bold))
+            card_layout.addWidget(lbl_caption)
+
+            ed_caption = QTextEdit()
+            ed_caption.setReadOnly(True)
+            ed_caption.setMinimumHeight(100)
+            ed_caption.setFont(QFont("Segoe UI", 13))
+            card_layout.addWidget(ed_caption)
+
+            # Hashtags section
+            lbl_hashtags = QLabel("🏷️ Hashtags:")
+            lbl_hashtags.setFont(QFont("Segoe UI", 13, QFont.Bold))
+            card_layout.addWidget(lbl_hashtags)
+
+            ed_hashtags = QTextEdit()
+            ed_hashtags.setReadOnly(True)
+            ed_hashtags.setMinimumHeight(60)
+            ed_hashtags.setFont(QFont("Courier New", 12))  # Issue 5: Monospace for hashtags
+            card_layout.addWidget(ed_hashtags)
+
+            # Copy buttons
+            btn_row = QHBoxLayout()
+
+            btn_copy_caption = QPushButton("📋 Copy Caption")
+            btn_copy_caption.setObjectName("btn_info_copy")
+            btn_copy_caption.clicked.connect(
+                lambda _, e=ed_caption: self._copy_to_clipboard(e.toPlainText())
             )
-            card_layout.addWidget(ed_combined)
+            btn_row.addWidget(btn_copy_caption)
 
-            btn_copy = QPushButton("📋 Copy toàn bộ")
-            btn_copy.setObjectName("btn_info_copy_caption")
-            btn_copy.clicked.connect(
-                lambda _, e=ed_combined: self._copy_to_clipboard(e.toPlainText())
+            btn_copy_hashtags = QPushButton("📋 Copy Hashtags")
+            btn_copy_hashtags.setObjectName("btn_info_copy")
+            btn_copy_hashtags.clicked.connect(
+                lambda _, e=ed_hashtags: self._copy_to_clipboard(e.toPlainText())
             )
-            card_layout.addWidget(btn_copy)
+            btn_row.addWidget(btn_copy_hashtags)
 
-            self.social_version_widgets.append({"widget": version_card, "combined": ed_combined})
+            btn_copy_all = QPushButton("📋 Copy All")
+            btn_copy_all.setObjectName("btn_primary")
+            btn_copy_all.clicked.connect(
+                lambda _, c=ed_caption, h=ed_hashtags:
+                    self._copy_to_clipboard(f"{c.toPlainText()}\n\n{h.toPlainText()}")
+            )
+            btn_row.addWidget(btn_copy_all)
+
+            card_layout.addLayout(btn_row)
+
+            self.social_version_widgets.append({
+                "widget": version_card,
+                "caption": ed_caption,
+                "hashtags": ed_hashtags
+            })
 
             layout.addWidget(version_card)
 
@@ -1209,7 +1295,7 @@ class VideoBanHangPanel(QWidget):
             social_media = outline.get("social_media", {})
             versions = social_media.get("versions", [])
 
-            # Update social tab with combined format
+            # Update social tab with separate caption and hashtags - Issue 5
             for i, version in enumerate(versions[:3]):
                 if i < len(self.social_version_widgets):
                     widget_data = self.social_version_widgets[i]
@@ -1217,11 +1303,9 @@ class VideoBanHangPanel(QWidget):
                     caption = version.get("caption", "")
                     hashtags = " ".join(version.get("hashtags", []))
 
-                    # Combined format
-                    combined_text = (
-                        f"=== Phiên bản {i+1} ===\n\n{caption}\n\n{hashtags}\n\n{'=' * 40}"
-                    )
-                    widget_data["combined"].setPlainText(combined_text)
+                    # Issue 5: Separate fields for better readability
+                    widget_data["caption"].setPlainText(caption)
+                    widget_data["hashtags"].setPlainText(hashtags)
 
             self._display_scene_cards(outline.get("scenes", []))
 
@@ -1384,8 +1468,17 @@ class VideoBanHangPanel(QWidget):
             )
             return
 
+        # Get config and log language settings
+        cfg = self._collect_cfg()
+        speech_lang = cfg.get("speech_lang", "vi")
+        voice_id = cfg.get("voice_id", "")
+        
         self._append_log("Bắt đầu tạo video...")
         self._append_log(f"✓ Sử dụng cache: {len(self.cache['scene_images'])} ảnh cảnh")
+        self._append_log(f"✓ Ngôn ngữ lời thoại: {speech_lang}")
+        if voice_id:
+            self._append_log(f"✓ Voice ID: {voice_id}")
+        
         self.btn_video.setEnabled(False)
 
         QMessageBox.information(
@@ -1393,6 +1486,12 @@ class VideoBanHangPanel(QWidget):
         )
 
         self.btn_video.setEnabled(True)
+        
+        # TODO: When video generation is fully implemented (replacing the stub above),
+        # integrate auto-download by calling _auto_download_video() with the generated
+        # video path. Example:
+        # if video_path and self.chk_auto_download.isChecked():
+        #     self._auto_download_video(video_path)
 
     def stop_processing(self):
         """PR#4: Stop all workers"""

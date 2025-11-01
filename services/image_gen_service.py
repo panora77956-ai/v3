@@ -120,7 +120,6 @@ def generate_image_with_rate_limit(
     aspect_ratio: str = "1:1",
     size: str = "1024x1024",
     delay_before: float = 0.0,
-    size: str = "1024x1024",
     rate_limit_delay: float = 10.0,
     max_calls_per_minute: int = 6,
     logger=None,
