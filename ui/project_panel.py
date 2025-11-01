@@ -283,7 +283,8 @@ class ProjectPanel(QWidget):
         self.table.cellDoubleClicked.connect(self._open_cell)
         rv.addWidget(self.table, 1)
 
-        self.console=Console(); self.console.setFixedHeight(160); rv.addWidget(self.console)
+        # PR#5: Reduce console height to give more space to result table
+        self.console=Console(); self.console.setFixedHeight(100); rv.addWidget(self.console)
         split.addWidget(right)
 
         self._ensure_columns()
