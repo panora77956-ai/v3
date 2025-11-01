@@ -6,12 +6,17 @@ FIXED: Removed QSS autoload block to prevent theme conflicts
 import datetime
 import math
 import os
+import platform
+import shutil
+import subprocess
 import time
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -646,6 +651,36 @@ class VideoBanHangPanel(QWidget):
 
         gb_cfg.setMinimumHeight(220)
         layout.addWidget(gb_cfg)
+
+        # Auto-download group
+        gb_download = self._create_group("💾 Tự động tải")
+        dl_layout = QVBoxLayout(gb_download)
+
+        self.chk_auto_download = QCheckBox("Tự động tải video về thư mục Downloads")
+        self.chk_auto_download.setChecked(True)  # Default ON
+        self.chk_auto_download.setFont(FONT_LABEL)
+        dl_layout.addWidget(self.chk_auto_download)
+
+        # Path display
+        path_label = QLabel("Thư mục:")
+        path_label.setFont(FONT_LABEL)
+        dl_layout.addWidget(path_label)
+
+        self.ed_download_path = QLineEdit()
+        self.ed_download_path.setFont(FONT_INPUT)
+        self.ed_download_path.setText(str(Path.home() / "Downloads" / "VideoSuperUltra"))
+        self.ed_download_path.setReadOnly(True)
+        dl_layout.addWidget(self.ed_download_path)
+
+        btn_change_path = QPushButton("📁 Đổi thư mục")
+        btn_change_path.setObjectName("btn_primary")
+        btn_change_path.setMinimumHeight(28)
+        btn_change_path.clicked.connect(self._change_download_path)
+        dl_layout.addWidget(btn_change_path)
+
+        gb_download.setMinimumHeight(140)
+        layout.addWidget(gb_download)
+
         layout.addStretch(1)
 
         # Action buttons at bottom of left column
@@ -1026,6 +1061,54 @@ class VideoBanHangPanel(QWidget):
         clipboard.setText(text)
         self._append_log("Đã copy vào clipboard")
 
+    def _change_download_path(self):
+        """Change download folder"""
+        path = QFileDialog.getExistingDirectory(
+            self, "Chọn thư mục tải video", self.ed_download_path.text()
+        )
+        if path:
+            self.ed_download_path.setText(path)
+            self._append_log(f"Đổi thư mục tải: {path}")
+
+    def _auto_download_video(self, source_path):
+        """Copy video to download folder"""
+        try:
+            download_dir = Path(self.ed_download_path.text())
+            download_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy file
+            source = Path(source_path)
+            destination = download_dir / source.name
+
+            shutil.copy2(source, destination)
+
+            self._append_log(f"✓ Đã tải về: {destination}")
+
+            # Show notification with option to open folder
+            reply = QMessageBox.question(
+                self,
+                "Tải thành công",
+                f"Video đã được tải về:\n{destination}\n\nMở thư mục?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+
+            # Open folder if user clicks Yes
+            if reply == QMessageBox.Yes:
+                try:
+                    if platform.system() == 'Windows':
+                        subprocess.Popen(f'explorer /select,"{destination}"')
+                    elif platform.system() == 'Darwin':
+                        subprocess.Popen(['open', '-R', str(destination)])
+                    else:
+                        subprocess.Popen(['xdg-open', str(download_dir)])
+                except Exception as e:
+                    self._append_log(f"⚠ Không thể mở thư mục: {e}")
+
+        except Exception as e:
+            self._append_log(f"✗ Lỗi tải video: {e}")
+            QMessageBox.warning(self, "Lỗi", f"Không thể tải video:\n{e}")
+
     def _on_auto_workflow(self):
         """PR#5: Auto workflow - runs all 3 steps sequentially"""
         self._append_log("⚡ Bắt đầu quy trình tự động (3 bước)...")
@@ -1237,8 +1320,17 @@ class VideoBanHangPanel(QWidget):
             )
             return
 
+        # Get config and log language settings
+        cfg = self._collect_cfg()
+        speech_lang = cfg.get("speech_lang", "vi")
+        voice_id = cfg.get("voice_id", "")
+        
         self._append_log("Bắt đầu tạo video...")
         self._append_log(f"✓ Sử dụng cache: {len(self.cache['scene_images'])} ảnh cảnh")
+        self._append_log(f"✓ Ngôn ngữ lời thoại: {speech_lang}")
+        if voice_id:
+            self._append_log(f"✓ Voice ID: {voice_id}")
+        
         self.btn_video.setEnabled(False)
 
         QMessageBox.information(
@@ -1246,6 +1338,10 @@ class VideoBanHangPanel(QWidget):
         )
 
         self.btn_video.setEnabled(True)
+        
+        # TODO: When video generation is implemented, call auto-download here:
+        # if video_path and self.chk_auto_download.isChecked():
+        #     self._auto_download_video(video_path)
 
     def stop_processing(self):
         """PR#4: Stop all workers"""

@@ -188,6 +188,12 @@ def build_outline(cfg:Dict[str,Any])->Dict[str,Any]:
     sceneCount = _scene_count(int(cfg.get("duration_sec") or 0))
     models_json = cfg.get("first_model_json") or ""
     product_count = int(cfg.get("product_count") or 0)
+    
+    # Log language configuration for debugging
+    speech_lang = cfg.get("speech_lang", "vi")
+    voice_id = cfg.get("voice_id", "")
+    print(f"[DEBUG] build_outline: speech_lang={speech_lang}, voice_id={voice_id}")
+    
     client = GeminiClient()
     sys_prompt = _build_system_prompt(cfg, sceneCount, models_json, product_count)
     raw = client.generate(sys_prompt, "Return ONLY the JSON object. No prose.", timeout=240)
