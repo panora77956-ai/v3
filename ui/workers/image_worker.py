@@ -35,7 +35,7 @@ class ImageWorker(QThread):
     def run(self):
         """Execute image generation in background thread"""
         # Get API keys from config
-        from utils.config import load as load_cfg
+        from services.core.config import load as load_cfg
         cfg = load_cfg()
         api_keys = cfg.get('google_api_keys', [])
         

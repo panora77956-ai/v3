@@ -209,7 +209,7 @@ class ImageGenerationWorker(QThread):
     def run(self):
         try:
             # Get API keys and settings from config
-            from utils.config import load as load_cfg
+            from services.core.config import load as load_cfg
             cfg_data = load_cfg()
             api_keys = cfg_data.get('google_api_keys', [])
             
