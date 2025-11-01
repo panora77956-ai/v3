@@ -211,14 +211,21 @@ class ProjectPanel(QWidget):
         # LEFT (1/4)
         left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(6)
 
-        # Nhóm: Dự án
-        lv.addWidget(QLabel("Dự án"))
+        # Nhóm: Dự án (PR#6: Part D #19, #21-23)
+        lv.addWidget(QLabel("<b>Dự án</b>"))
         rowm=QHBoxLayout()
         self.ed_name=QLineEdit(self.project_name); self.ed_name.setReadOnly(True)
-        self.btn_del_scene=QPushButton("Xóa cảnh đã chọn"); self.btn_del_scene.setObjectName('btn_delete_xoa'); self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
-        self.btn_del_all=QPushButton("Xóa tất cả cảnh"); self.btn_del_all.setObjectName('btn_delete_xoa_all'); self.btn_del_all.clicked.connect(self._delete_all_scenes)
         rowm.addWidget(self.ed_name,1); lv.addLayout(rowm)
-        rowx=QHBoxLayout(); rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
+        rowx=QHBoxLayout()
+        self.btn_del_scene=QPushButton("🗑️ Xóa cảnh đã chọn")
+        self.btn_del_scene.setObjectName('btn_danger')  # Red color
+        self.btn_del_scene.setMinimumHeight(32)
+        self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
+        self.btn_del_all=QPushButton("🗑️ Xóa tất cả cảnh")
+        self.btn_del_all.setObjectName('btn_danger')  # Red color
+        self.btn_del_all.setMinimumHeight(32)
+        self.btn_del_all.clicked.connect(self._delete_all_scenes)
+        rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
 
         # Model/Aspect/Copies
         lv.addWidget(QLabel("Model / Tỉ lệ / Số video"))
@@ -244,25 +251,40 @@ class ProjectPanel(QWidget):
         rowcfg.addWidget(self.sp_copies,0)
         lv.addLayout(rowcfg)
 
-        # Prompt: nhập hoặc nạp file
+        # Prompt: nhập hoặc nạp file (PR#6: Part D #19)
         lv.addWidget(QLabel("Prompt (nhập hoặc hiển thị từ file)"))
         self.ed_json=QTextEdit(); self.ed_json.setMinimumHeight(120); lv.addWidget(self.ed_json)
-        rowp=QHBoxLayout(); btn_prompt=QPushButton("Chọn file prompt"); btn_prompt.setObjectName('btn_import_nhap'); btn_prompt.clicked.connect(self._pick_prompt_file); rowp.addWidget(btn_prompt); lv.addLayout(rowp)
+        rowp=QHBoxLayout()
+        btn_prompt=QPushButton("📄 Chọn file prompt")
+        btn_prompt.setObjectName('btn_import')  # Orange color
+        btn_prompt.setMinimumHeight(32)
+        btn_prompt.clicked.connect(self._pick_prompt_file)
+        rowp.addWidget(btn_prompt)
+        lv.addLayout(rowp)
 
-        # Ảnh: chọn thư mục hoặc chọn từng ảnh
+        # Ảnh: chọn thư mục hoặc chọn từng ảnh (PR#6: Part D #19)
         lv.addWidget(QLabel("Ảnh tham chiếu"))
         rowi=QHBoxLayout()
-        btn_img_dir=QPushButton("Chọn thư mục ảnh"); btn_img_dir.setObjectName('btn_import_nhap_dir'); btn_img_dir.clicked.connect(self._pick_image_dir); rowi.addWidget(btn_img_dir)
-        btn_imgs=QPushButton("Chọn ảnh lẻ"); btn_imgs.setObjectName('btn_import_nhap_imgs'); btn_imgs.clicked.connect(self._pick_images_multi); rowi.addWidget(btn_imgs)
+        btn_img_dir=QPushButton("📁 Chọn thư mục ảnh")
+        btn_img_dir.setObjectName('btn_import')  # Orange color
+        btn_img_dir.setMinimumHeight(32)
+        btn_img_dir.clicked.connect(self._pick_image_dir)
+        rowi.addWidget(btn_img_dir)
+        btn_imgs=QPushButton("🖼️ Chọn ảnh lẻ")
+        btn_imgs.setObjectName('btn_import')  # Orange color
+        btn_imgs.setMinimumHeight(32)
+        btn_imgs.clicked.connect(self._pick_images_multi)
+        rowi.addWidget(btn_imgs)
         lv.addLayout(rowi)
 
-        # Nút lớn bắt đầu (PR#4: Add stop button)
+        # Nút lớn bắt đầu (PR#6: Part D #19, #21-23)
         hb_run = QHBoxLayout()
-        self.btn_run=QPushButton("BẮT ĐẦU TẠO VIDEO"); self.btn_run.setMinimumHeight(46)
-        self.btn_run.setObjectName('btn_run_primary')
+        self.btn_run=QPushButton("▶ BẮT ĐẦU TẠO VIDEO")
+        self.btn_run.setMinimumHeight(46)
+        self.btn_run.setObjectName('btn_success')  # Green color
         self.btn_run.clicked.connect(self._run_seq)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setObjectName("btn_gray")  # Gray color
         self.btn_stop.setMaximumWidth(80)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_processing)
@@ -270,9 +292,9 @@ class ProjectPanel(QWidget):
         hb_run.addWidget(self.btn_stop)
         lv.addLayout(hb_run)
 
-        self.btn_run_all=QPushButton("CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
+        self.btn_run_all=QPushButton("⚡ CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
         self.btn_run_all.setMinimumHeight(46)
-        self.btn_run_all.setObjectName('btn_success_run_all')
+        self.btn_run_all.setObjectName('btn_warning')  # Orange color
         self.btn_run_all.clicked.connect(lambda: self.run_all_requested.emit())
         lv.addWidget(self.btn_run_all)
 

@@ -101,30 +101,57 @@ class Text2VideoPane(QWidget):
         self.console = QTextEdit(); self.console.setReadOnly(True); self.console.setMinimumHeight(120)
         colL.addWidget(self.console, 0)
 
-        # RIGHT (2/3)
+        # RIGHT (2/3) - PR#6: Part B #5 - Implement 3 result tabs
         colR = QVBoxLayout(); colR.setSpacing(8)
-        colR.addWidget(QLabel("Kịch bản chi tiết (Bible + Outline + Screenplay)"))
-        self.view_story = QTextEdit(); self.view_story.setReadOnly(True); self.view_story.setMinimumHeight(200)
+        
+        # Story/Script section (above tabs)
+        colR.addWidget(QLabel("<b>Kịch bản chi tiết (Bible + Outline + Screenplay)</b>"))
+        self.view_story = QTextEdit(); self.view_story.setReadOnly(True); self.view_story.setMinimumHeight(150)
         colR.addWidget(self.view_story,0)
-
+        
+        # Hidden table (legacy)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setHorizontalHeaderLabels(["Cảnh","Prompt (VI)","Prompt (Đích)","Tỉ lệ","Thời lượng (s)","Xem"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setHidden(True); colR.addWidget(self.table, 0)
-
-        colR.addWidget(QLabel("Cảnh + Prompt + Kết quả (CardList)"))
+        
+        # PR#6: Part B #5 - Create 3 result tabs
+        from PyQt5.QtWidgets import QTabWidget
+        self.result_tabs = QTabWidget()
+        
+        # Tab 1: Kết quả cảnh (Scene results)
+        scenes_widget = QWidget()
+        scenes_layout = QVBoxLayout(scenes_widget)
+        scenes_layout.setContentsMargins(4, 4, 4, 4)
         self.cards = QListWidget()
-
-        # Apply dark theme & spacing
-        self.setObjectName("Text2VideoRoot")
-        self.setStyleSheet("QListWidget::item{margin-bottom:3px;}")
-
         self.cards.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.cards.setIconSize(QSize(288,162))
-        self.cards.setIconSize(QSize(240, 135))  # bigger thumbnails
-        colR.addWidget(self.cards,1)
-
+        self.cards.setIconSize(QSize(240, 135))
+        scenes_layout.addWidget(self.cards)
+        self.result_tabs.addTab(scenes_widget, "🎬 Kết quả cảnh")
+        
+        # Tab 2: Thumbnail
+        thumbnail_widget = QWidget()
+        thumbnail_layout = QVBoxLayout(thumbnail_widget)
+        thumbnail_layout.setContentsMargins(4, 4, 4, 4)
+        self.thumbnail_display = QTextEdit()
+        self.thumbnail_display.setReadOnly(True)
+        self.thumbnail_display.setPlaceholderText("Thumbnail preview sẽ hiển thị ở đây sau khi tạo video")
+        thumbnail_layout.addWidget(self.thumbnail_display)
+        self.result_tabs.addTab(thumbnail_widget, "📺 Thumbnail")
+        
+        # Tab 3: Social
+        social_widget = QWidget()
+        social_layout = QVBoxLayout(social_widget)
+        social_layout.setContentsMargins(4, 4, 4, 4)
+        self.social_display = QTextEdit()
+        self.social_display.setReadOnly(True)
+        self.social_display.setPlaceholderText("Social media content sẽ hiển thị ở đây sau khi tạo kịch bản")
+        social_layout.addWidget(self.social_display)
+        self.result_tabs.addTab(social_widget, "📱 Social")
+        
+        colR.addWidget(self.result_tabs, 1)
+        
         root.addLayout(colL,1); root.addLayout(colR,2)
 
         # Wire up (PR#4: Updated for new auto button + stop button)
