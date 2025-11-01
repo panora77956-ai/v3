@@ -557,9 +557,17 @@ class VideoBanHangPanel(QWidget):
         self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
         
+        # PR#4: Add stop button
+        self.btn_stop = QPushButton("⏹ Dừng")
+        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setMaximumWidth(80)
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.clicked.connect(self.stop_processing)
+        
         btn_layout.addWidget(self.btn_script)
         btn_layout.addWidget(self.btn_images)
         btn_layout.addWidget(self.btn_video)
+        btn_layout.addWidget(self.btn_stop)
         
         layout.addLayout(btn_layout)
     
@@ -757,6 +765,7 @@ class VideoBanHangPanel(QWidget):
         self._append_log("Bắt đầu tạo kịch bản...")
         self.btn_script.setEnabled(False)
         self.btn_script.setText("⏳ Đang tạo...")
+        self.btn_stop.setEnabled(True)  # PR#4: Enable stop button
         
         self.script_worker = ScriptWorker(cfg)
         self.script_worker.progress.connect(self._append_log)
@@ -809,6 +818,7 @@ class VideoBanHangPanel(QWidget):
         finally:
             self.btn_script.setEnabled(True)
             self.btn_script.setText("📝 Viết kịch bản")
+            self.btn_stop.setEnabled(False)  # PR#4: Disable stop button
     
     def _on_script_error(self, error_msg):
         """Script error"""
@@ -858,6 +868,7 @@ class VideoBanHangPanel(QWidget):
         
         self._append_log("Bắt đầu tạo ảnh...")
         self.btn_images.setEnabled(False)
+        self.btn_stop.setEnabled(True)  # PR#4: Enable stop button
         
         self.img_worker = ImageGenerationWorker(
             self.cache['outline'], cfg, 
@@ -922,6 +933,7 @@ class VideoBanHangPanel(QWidget):
             self._append_log("❌ Có lỗi khi tạo ảnh")
         
         self.btn_images.setEnabled(True)
+        self.btn_stop.setEnabled(False)  # PR#4: Disable stop button
     
     def _on_generate_video(self):
         """Generate video - with cache validation"""
@@ -944,5 +956,24 @@ class VideoBanHangPanel(QWidget):
                               "Chức năng tạo video sẽ được triển khai trong phiên bản tiếp theo.")
         
         self.btn_video.setEnabled(True)
+    
+    def stop_processing(self):
+        """PR#4: Stop all workers"""
+        if hasattr(self, 'script_worker') and self.script_worker and self.script_worker.isRunning():
+            self.script_worker.terminate()
+            self._append_log("[INFO] Đã dừng script worker")
+        
+        if hasattr(self, 'image_worker') and self.image_worker and self.image_worker.isRunning():
+            self.image_worker.terminate()
+            self._append_log("[INFO] Đã dừng image worker")
+        
+        # Re-enable buttons
+        self.btn_script.setEnabled(True)
+        self.btn_script.setText("📝 Viết kịch bản")
+        self.btn_images.setEnabled(True)
+        self.btn_images.setText("🎨 Tạo ảnh")
+        self.btn_stop.setEnabled(False)
+        
+        self._append_log("[INFO] Đã dừng xử lý")
 
 # FIXED: Removed QSS autoload block (lines 1000-1034) to prevent theme conflicts

@@ -248,11 +248,19 @@ class ProjectPanel(QWidget):
         btn_imgs=QPushButton("Chọn ảnh lẻ"); btn_imgs.setObjectName('btn_import_nhap_imgs'); btn_imgs.clicked.connect(self._pick_images_multi); rowi.addWidget(btn_imgs)
         lv.addLayout(rowi)
 
-        # Nút lớn bắt đầu
+        # Nút lớn bắt đầu (PR#4: Add stop button)
+        hb_run = QHBoxLayout()
         self.btn_run=QPushButton("BẮT ĐẦU TẠO VIDEO"); self.btn_run.setMinimumHeight(46)
         self.btn_run.setObjectName('btn_run_primary')
         self.btn_run.clicked.connect(self._run_seq)
-        lv.addWidget(self.btn_run)
+        self.btn_stop = QPushButton("⏹ Dừng")
+        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setMaximumWidth(80)
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.clicked.connect(self.stop_processing)
+        hb_run.addWidget(self.btn_run)
+        hb_run.addWidget(self.btn_stop)
+        lv.addLayout(hb_run)
 
         self.btn_run_all=QPushButton("CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
         self.btn_run_all.setMinimumHeight(46)
@@ -463,7 +471,10 @@ class ProjectPanel(QWidget):
             model=self.cb_model.currentText(); aspect=self.cb_aspect.currentText(); copies=int(self.sp_copies.value()); pid=cfg.get("default_project_id") or DEFAULT_PROJECT_ID
             if self._seq_running: self.console.warn("Đang chạy tuần tự, vui lòng chờ…"); return
             self._seq_running=True
-            self.btn_run.setEnabled(False); self.btn_run.setText("ĐANG TẠO…"); QApplication.setOverrideCursor(Qt.WaitCursor)
+            # PR#4: Enable stop button when running
+            self.btn_run.setEnabled(False); self.btn_run.setText("ĐANG TẠO…")
+            self.btn_stop.setEnabled(True)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             self.pb.setValue(0); self.pb_text.setText(f"Bắt đầu: {n} cảnh, {copies} video/cảnh")
             self.console.info(f"Bắt đầu gửi tuần tự {n} cảnh; copies={copies}.")
             self._t=QThread(self)
@@ -474,7 +485,10 @@ class ProjectPanel(QWidget):
             self._w.log.connect(lambda lv,msg: getattr(self.console, lv.lower())(msg) if hasattr(self.console, lv.lower()) else self.console.info(msg))
             def on_finish(_):
                 self.console.info("Đã gửi xong theo tuần tự.")
-                self.btn_run.setEnabled(True); self.btn_run.setText("BẮT ĐẦU TẠO VIDEO"); QApplication.restoreOverrideCursor()
+                # PR#4: Disable stop button when done
+                self.btn_run.setEnabled(True); self.btn_run.setText("BẮT ĐẦU TẠO VIDEO")
+                self.btn_stop.setEnabled(False)
+                QApplication.restoreOverrideCursor()
                 self.pb_text.setText("Hoàn tất gửi.")
                 self._seq_running=False
                 # start auto-check (hidden) mỗi 10s
@@ -572,6 +586,35 @@ class ProjectPanel(QWidget):
         self.jobs.clear()
         self.table.setRowCount(0)
         self.console.info("Đã xóa toàn bộ cảnh.")
+
+    def showEvent(self, event):
+        """PR#4: Reload tokens when tab becomes visible"""
+        super().showEvent(event)
+        self.refresh_tokens()
+
+    def refresh_tokens(self):
+        """PR#4: Reload tokens from config"""
+        try:
+            config = self.settings_provider()
+            tokens = config.get('tokens', [])
+            if tokens:
+                self.tokens = tokens
+                self.console.info(f"[INFO] Đã cập nhật {len(tokens)} Google Labs tokens")
+                # Recreate client with new tokens
+                if self.tokens:
+                    self.client = LabsClient(self.tokens, on_event=None)
+        except Exception as e:
+            self.console.err(f"[ERROR] Không thể tải tokens: {e}")
+    
+    def stop_processing(self):
+        """PR#4: Stop all workers"""
+        if hasattr(self, '_seq_worker') and self._seq_worker:
+            # Signal worker to stop (if it supports it)
+            self.console.warn("[INFO] Đang dừng xử lý...")
+            self._seq_running = False
+        
+        self.btn_run.setEnabled(True)
+        self.btn_stop.setEnabled(False)
 
     def closeEvent(self, e):
         try:

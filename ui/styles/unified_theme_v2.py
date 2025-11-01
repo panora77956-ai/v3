@@ -42,15 +42,16 @@ QLabel {
     font-weight: bold;
 }
 
-/* Buttons - 14px bold, vibrant colors */
+/* Buttons - 14px bold, vibrant colors (PR#4: Reduced padding for smaller buttons) */
 QPushButton {
     background: #2196F3;
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 12px 24px;
+    padding: 4px 12px;
+    min-height: 24px;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 QPushButton:hover {
@@ -64,6 +65,15 @@ QPushButton:pressed {
 QPushButton:disabled {
     background: #BDBDBD;
     color: #757575;
+}
+
+/* PR#4: Smaller buttons in key lists */
+QPushButton[objectName*="btn_check"],
+QPushButton[objectName*="btn_delete"],
+QPushButton[objectName*="btn_primary"] {
+    min-height: 20px;
+    padding: 2px 8px;
+    font-size: 12px;
 }
 
 /* Success Buttons (Green) - Save actions */
@@ -270,24 +280,42 @@ QTabWidget::pane {
     background: white;
 }
 
+/* PR#4: Enhanced tab styling with bold text, colorful backgrounds, wider tabs */
 QTabBar::tab {
-    background: #F5F5F5;
-    border: 1px solid #E0E0E0;
+    font-weight: 700;
+    font-size: 14px;
+    min-width: 150px;
     padding: 10px 20px;
     margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    font-size: 13px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    color: white;
+}
+
+/* Different color for each tab (Cài đặt, Image2Video, Text2Video, Video bán hàng) */
+QTabBar::tab:nth-child(1) {
+    background: #2196F3;  /* Blue - Cài đặt */
+}
+
+QTabBar::tab:nth-child(2) {
+    background: #4CAF50;  /* Green - Image2Video */
+}
+
+QTabBar::tab:nth-child(3) {
+    background: #FF9800;  /* Orange - Text2Video */
+}
+
+QTabBar::tab:nth-child(4) {
+    background: #9C27B0;  /* Purple - Video bán hàng */
 }
 
 QTabBar::tab:selected {
-    background: white;
-    border-bottom: 3px solid #2196F3;
-    font-weight: bold;
+    border-bottom: 4px solid white;
+    font-size: 15px;
 }
 
-QTabBar::tab:hover {
-    background: #E0E0E0;
+QTabBar::tab:hover:!selected {
+    opacity: 0.8;
 }
 
 /* Group Box - 16px bold title, reduced spacing (6px) */

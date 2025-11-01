@@ -22,56 +22,83 @@ class Text2VideoPane(QWidget):
     def _build_ui(self):
         root = QHBoxLayout(self); root.setSpacing(12); root.setContentsMargins(8,8,8,8)
 
-        # LEFT (1/3)
+        # LEFT (1/3) - PR#4: 6-row redesigned layout
         colL = QVBoxLayout(); colL.setSpacing(8)
-        rowp = QHBoxLayout(); rowp.addWidget(QLabel("Tên dự án"))
+        
+        # Project name row
+        rowp = QHBoxLayout(); rowp.addWidget(QLabel("<b>Tên dự án:</b>"))
         self.ed_project = QLineEdit(); self.ed_project.setPlaceholderText("Nhập tên dự án (để trống sẽ tự tạo)")
         rowp.addWidget(self.ed_project,1); colL.addLayout(rowp)
 
-        colL.addWidget(QLabel("Ý tưởng (đoạn văn)"))
+        # Idea text area
+        colL.addWidget(QLabel("<b>Ý tưởng (đoạn văn):</b>"))
         self.ed_idea = QTextEdit(); self.ed_idea.setAcceptRichText(False)
         self.ed_idea.setLocale(QLocale(QLocale.Vietnamese, QLocale.Vietnam))
         self.ed_idea.setPlaceholderText("Nhập ý tưởng thô (<10 từ)…")
+        self.ed_idea.setMaximumHeight(100)
         colL.addWidget(self.ed_idea)
 
-        r1 = QHBoxLayout(); r1.addWidget(QLabel("Phong cách"))
+        # Row 1: Video style + Script style
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("<b>Phong cách video:</b>"))
         self.cb_style = QComboBox()
         self.cb_style.addItems(["Điện ảnh (Cinematic)","Hoạt hình Nhật (Anime)","Tài liệu","Quay thực","3D/CGI","Stop‑motion","Màu nước","Cyberpunk","Noir","Fantasy","Sci‑Fi","Tối giản","Vlog","Doanh nghiệp","Trưng bày sản phẩm","Lifestyle","Thể thao","Du lịch"])
-        r1.addWidget(self.cb_style,1); colL.addLayout(r1)
+        row1.addWidget(self.cb_style,1)
+        colL.addLayout(row1)
 
-        r2 = QHBoxLayout(); r2.addWidget(QLabel("Thời lượng (giây)"))
+        # Row 2: Duration + Language
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel("<b>Thời lượng (s):</b>"))
         self.sp_duration = QSpinBox(); self.sp_duration.setRange(3, 3600); self.sp_duration.setValue(100)
-        r2.addWidget(self.sp_duration,1); colL.addLayout(r2)
-
-        r4 = QHBoxLayout(); r4.addWidget(QLabel("Ngôn ngữ đích"))
+        row2.addWidget(self.sp_duration,1)
+        row2.addWidget(QLabel("<b>Ngôn ngữ:</b>"))
         self.cb_out_lang = QComboBox()
         for name, code in _LANGS: self.cb_out_lang.addItem(name, code)
-        r4.addWidget(self.cb_out_lang,1); colL.addLayout(r4)
+        row2.addWidget(self.cb_out_lang,1)
+        colL.addLayout(row2)
 
-        r5 = QHBoxLayout(); r5.addWidget(QLabel("Tỉ lệ khung hình"))
+        # Row 3: Aspect ratio + Videos per scene
+        row3 = QHBoxLayout()
+        row3.addWidget(QLabel("<b>Tỉ lệ:</b>"))
         self.cb_ratio = QComboBox(); self.cb_ratio.addItems(["16:9","9:16","1:1","4:5","21:9"])
-        r5.addWidget(self.cb_ratio,1); colL.addLayout(r5)
+        row3.addWidget(self.cb_ratio,1)
+        row3.addWidget(QLabel("<b>Số video/cảnh:</b>"))
+        self.sp_copies = QSpinBox(); self.sp_copies.setRange(1, 5); self.sp_copies.setValue(1)
+        row3.addWidget(self.sp_copies,1)
+        colL.addLayout(row3)
 
-        r6 = QHBoxLayout(); r6.addWidget(QLabel("Số video/cảnh"))
-        self.sp_copies = QSpinBox(); self.sp_copies.setRange(1, 10); self.sp_copies.setValue(1)
-        r6.addWidget(self.sp_copies,1); colL.addLayout(r6)
-
-        r7 = QHBoxLayout(); r7.addWidget(QLabel("Model tạo video"))
+        # Row 4: Video model
+        row4 = QHBoxLayout()
+        row4.addWidget(QLabel("<b>Model tạo video:</b>"))
         self.cb_model = QComboBox(); self.cb_model.addItems(_VIDEO_MODELS)
-        r7.addWidget(self.cb_model,1); colL.addLayout(r7)
+        row4.addWidget(self.cb_model,1)
+        colL.addLayout(row4)
 
-        self.chk_up4k = QPushButton("Upscale 4K"); self.chk_up4k.setObjectName("btn_info_toggle"); self.chk_up4k.setCheckable(True); self.chk_up4k.setChecked(False)
-        colL.addWidget(self.chk_up4k)
+        # Row 5: Up Scale 4K checkbox (PR#4: Added as checkbox)
+        from PyQt5.QtWidgets import QCheckBox
+        self.cb_upscale = QCheckBox("Up Scale 4K")
+        self.cb_upscale.setStyleSheet("font-size: 14px; font-weight: 700;")
+        colL.addWidget(self.cb_upscale)
 
+        # Row 6: Single auto button + Stop button (PR#4)
         hb = QHBoxLayout()
-        self.btn_script = QPushButton("Viết kịch bản"); self.btn_script.setObjectName("btn_primary_script")
-        self.btn_create = QPushButton("Bắt đầu tạo video"); self.btn_create.setObjectName("btn_success_create")
-        hb.addWidget(self.btn_script); hb.addWidget(self.btn_create); colL.addLayout(hb)
+        self.btn_auto = QPushButton("▶ Tạo video tự động (3 bước)")
+        self.btn_auto.setObjectName("btn_success")
+        self.btn_auto.setMinimumHeight(44)
+        self.btn_stop = QPushButton("⏹ Dừng")
+        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setMaximumWidth(80)
+        self.btn_stop.setEnabled(False)
+        hb.addWidget(self.btn_auto)
+        hb.addWidget(self.btn_stop)
+        colL.addLayout(hb)
 
-        self.btn_open_folder = QPushButton("Mở thư mục dự án"); self.btn_open_folder.setObjectName("btn_primary_open")
+        self.btn_open_folder = QPushButton("📁 Mở thư mục dự án")
+        self.btn_open_folder.setObjectName("btn_primary_open")
         colL.addWidget(self.btn_open_folder)
 
-        colL.addWidget(QLabel("Console")); self.console = QTextEdit(); self.console.setReadOnly(True); self.console.setMinimumHeight(120)
+        colL.addWidget(QLabel("<b>Console:</b>"))
+        self.console = QTextEdit(); self.console.setReadOnly(True); self.console.setMinimumHeight(120)
         colL.addWidget(self.console, 0)
 
         # RIGHT (2/3)
@@ -100,12 +127,16 @@ class Text2VideoPane(QWidget):
 
         root.addLayout(colL,1); root.addLayout(colR,2)
 
-        # Wire up
-        self.btn_script.clicked.connect(self._on_write_script_clicked)
-        self.btn_create.clicked.connect(self._on_create_video_clicked)
+        # Wire up (PR#4: Updated for new auto button + stop button)
+        self.btn_auto.clicked.connect(self._on_auto_generate)
+        self.btn_stop.clicked.connect(self.stop_processing)
         self.table.cellDoubleClicked.connect(self._open_prompt_view)
         self.cards.itemDoubleClicked.connect(self._open_card_prompt)
         self.btn_open_folder.clicked.connect(self._open_project_dir)
+        
+        # Keep worker reference
+        self.worker = None
+        self.thread = None
 
 
     def _render_card_text(self, scene:int):
@@ -138,7 +169,39 @@ class Text2VideoPane(QWidget):
     def _append_log(self, msg):
         self.console.append(msg)
 
+    def stop_processing(self):
+        """PR#4: Stop all workers"""
+        if self.worker:
+            self.worker.should_stop = True
+            self._append_log("[INFO] Đang dừng xử lý...")
+        
+        self.btn_auto.setEnabled(True)
+        self.btn_stop.setEnabled(False)
+
+    def _on_auto_generate(self):
+        """PR#4: Auto-generate - runs script generation then video creation"""
+        idea = self.ed_idea.toPlainText().strip()
+        if not idea:
+            QMessageBox.warning(self, "Thiếu thông tin", "Nhập ý tưởng trước.")
+            return
+        
+        self.btn_auto.setEnabled(False)
+        self.btn_stop.setEnabled(True)
+        
+        # Step 1: Generate script
+        payload = dict(
+            project=self.ed_project.text().strip(),
+            idea=idea,
+            style=self.cb_style.currentText(),
+            duration=int(self.sp_duration.value()),
+            provider="Gemini 2.5",
+            out_lang_code=self.cb_out_lang.currentData()
+        )
+        self._append_log("[INFO] Bước 1/3: Sinh kịch bản...")
+        self._run_in_thread("script", payload)
+
     def _on_write_script_clicked(self):
+        """Legacy script generation"""
         idea = self.ed_idea.toPlainText().strip()
         if not idea: QMessageBox.warning(self,"Thiếu thông tin","Nhập ý tưởng trước."); return
         payload = dict(
@@ -166,7 +229,7 @@ class Text2VideoPane(QWidget):
         payload=dict(
             scenes=scenes, copies=self._t2v_get_copies(), model_key=self.cb_model.currentText(),
             title=self._title, dir_videos=self._ctx.get("dir_videos",""),
-            upscale_4k=self.chk_up4k.isChecked()
+            upscale_4k=self.cb_upscale.isChecked()  # PR#4: Use checkbox instead of button
         )
         if not payload["dir_videos"]:
             st=cfg.load(); root=st.get("download_dir") or ""
@@ -178,14 +241,24 @@ class Text2VideoPane(QWidget):
         self._run_in_thread("video", payload)
 
     def _run_in_thread(self, task, payload):
-        self.th = QThread(self); self.w = _Worker(task, payload); self.w.moveToThread(self.th)
-        self.th.started.connect(self.w.run); self.w.log.connect(self._append_log)
+        # PR#4: Store worker and thread references for stop functionality
+        self.thread = QThread(self)
+        self.worker = _Worker(task, payload)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.log.connect(self._append_log)
         if task=="script":
-            self.w.story_done.connect(self._on_story_ready)
+            self.worker.story_done.connect(self._on_story_ready)
         else:
-            self.w.job_card.connect(self._on_job_card)
-            self.w.job_finished.connect(lambda: self._append_log("[INFO] Worker hoàn tất."))
-        self.th.start()
+            self.worker.job_card.connect(self._on_job_card)
+            self.worker.job_finished.connect(lambda: self._on_worker_finished())
+        self.thread.start()
+    
+    def _on_worker_finished(self):
+        """PR#4: Re-enable buttons when worker completes"""
+        self._append_log("[INFO] Worker hoàn tất.")
+        self.btn_auto.setEnabled(True)
+        self.btn_stop.setEnabled(False)
 
     def _on_story_ready(self, data, ctx):
         self._ctx = ctx
@@ -235,6 +308,15 @@ class Text2VideoPane(QWidget):
                         json.dump(j, f, ensure_ascii=False, indent=2)
             except Exception: pass
         self._append_log("[INFO] Kịch bản đã hiển thị & lưu file.")
+        
+        # PR#4: If stop button is enabled (auto mode), automatically start video generation
+        if not self.btn_stop.isEnabled():
+            # Normal mode - re-enable auto button
+            self.btn_auto.setEnabled(True)
+        else:
+            # Auto mode - proceed to step 2 (video generation)
+            self._append_log("[INFO] Bước 2/3: Bắt đầu tạo video...")
+            self._on_create_video_clicked()
 
     def _open_project_dir(self):
         d = self._ctx.get("prj_dir")
