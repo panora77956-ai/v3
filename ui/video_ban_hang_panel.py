@@ -347,24 +347,24 @@ class VideoBanHangPanel(QWidget):
         main_layout.setSpacing(8)
 
         # LEFT COLUMN - EXACTLY 400px
-        left_widget = QWidget()
-        left_widget.setFixedWidth(400)
-        left_layout = QVBoxLayout(left_widget)
+        self.left_widget = QWidget()
+        self.left_widget.setFixedWidth(400)
+        left_layout = QVBoxLayout(self.left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(6)
 
         self._build_left_column(left_layout)
 
-        main_layout.addWidget(left_widget)
+        main_layout.addWidget(self.left_widget)
 
         # RIGHT AREA - Takes remaining space
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
+        self.right_widget = QWidget()
+        right_layout = QVBoxLayout(self.right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         self._build_right_column(right_layout)
 
-        main_layout.addWidget(right_widget, 1)
+        main_layout.addWidget(self.right_widget, 1)
 
     def _build_left_column(self, layout):
         """Build left column with project settings"""
@@ -606,7 +606,7 @@ class VideoBanHangPanel(QWidget):
         self.btn_video.setEnabled(False)
         layout.addWidget(self.btn_video)
 
-        self.btn_stop = QPushButton("⏹️ Dừng")
+        self.btn_stop = QPushButton("⏹ Dừng")
         self.btn_stop.setObjectName("btn_stop")
         self.btn_stop.setMinimumHeight(42)
         self.btn_stop.clicked.connect(self.stop_processing)
