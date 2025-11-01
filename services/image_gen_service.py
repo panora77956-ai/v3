@@ -10,17 +10,19 @@ class ImageGenError(Exception):
     pass
 
 
-def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float = 10.0, log_callback=None) -> bytes:
+def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float = 15.0, enforce_rate_limit: bool = True, log_callback=None) -> bytes:
     """
     Generate image using Gemini Flash Image model with ENHANCED rate limiting
     
-    FIXED: Increased delay from 5s to 10s between key switches
-    Added exponential backoff and 60s cooldown when all keys exhausted
+    FIXED PR#4: Increased delay from 10s to 15s between key switches
+    Added enforce_rate_limit parameter for better control
+    Retry delay increased to 30s between key switches
     
     Args:
         prompt: Text prompt for image generation
         timeout: Request timeout in seconds (default from api_config)
-        retry_delay: Delay between key switches (10.0s for Gemini free tier safety)
+        retry_delay: Base delay before first API call (15.0s for Gemini free tier safety)
+        enforce_rate_limit: If True, wait before first API call (default True)
         log_callback: Optional callback function for logging (receives string messages)
         
     Returns:
@@ -41,16 +43,21 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
     
     log(f"[DEBUG] Tìm thấy {len(keys)} Google API keys")
     
+    # PR#4: Enforce rate limit before first call
+    if enforce_rate_limit:
+        log(f"[RATE LIMIT] Đợi {retry_delay}s trước khi gọi API...")
+        time.sleep(retry_delay)
+    
     last_error = None
     rate_limited_count = 0
     
     for key_idx, api_key in enumerate(keys):
         try:
-            # CRITICAL FIX: Increase delay between key switches to 10s
-            # Gemini Free Tier: 15 req/min = 4s/req minimum, use 10s for safety
+            # CRITICAL FIX PR#4: Increase delay between key switches to 30s
+            # Gemini Free Tier: 15 req/min = 4s/req minimum, use 30s for safety on retry
             if key_idx > 0:
-                log(f"[INFO] Chờ {retry_delay}s trước khi thử key tiếp theo...")
-                time.sleep(retry_delay)
+                log(f"[INFO] Chờ 30s trước khi thử key tiếp theo...")
+                time.sleep(30.0)
             
             key_preview = f"...{api_key[-6:]}"
             log(f"[INFO] Key {key_preview} (lần {key_idx + 1})")

@@ -261,3 +261,55 @@ class LabsClient:
             out[key or "unknown"]={"status": ("COMPLETED" if st=="DONE" and vurls else ("DONE_NO_URL" if st=="DONE" else st)),
                                    "video_urls": _dedup(vurls), "image_urls": _dedup(iurls), "raw": item}
         return out
+
+    def generate_videos_batch(self, prompt: str, num_videos: int = 1, model_key: str = "veo_3_1_t2v_fast_ultra", 
+                              aspect_ratio: str = "VIDEO_ASPECT_RATIO_LANDSCAPE", 
+                              project_id: Optional[str] = DEFAULT_PROJECT_ID) -> List[str]:
+        """
+        Generate multiple videos in one API call (PR#4: Batch video generation)
+        Google Lab Flow supports up to 4 videos per request
+        
+        Args:
+            prompt: Text prompt for video generation
+            num_videos: Number of videos to generate (max 4)
+            model_key: Video model to use
+            aspect_ratio: Aspect ratio (e.g., VIDEO_ASPECT_RATIO_LANDSCAPE)
+            project_id: Project ID for the request
+            
+        Returns:
+            List of operation names for polling
+        """
+        if num_videos > 4:
+            num_videos = 4
+        
+        # Trim prompt if too long
+        prompt_text = _trim_prompt_text(prompt)
+        
+        # Build batch request with multiple copies
+        requests_list = []
+        for i in range(num_videos):
+            seed = int(time.time() * 1000) + i
+            item = {
+                "aspectRatio": aspect_ratio,
+                "seed": seed,
+                "videoModelKey": model_key,
+                "textInput": {"prompt": prompt_text}
+            }
+            requests_list.append(item)
+        
+        payload = {"requests": requests_list}
+        if project_id:
+            payload["clientContext"] = {"projectId": project_id}
+        
+        # Call T2V endpoint
+        data = self._post(T2V_URL, payload) or {}
+        
+        # Extract operation names
+        operations = data.get("operations", [])
+        operation_names = []
+        for op in operations:
+            name = (op.get("operation") or {}).get("name") or op.get("name") or ""
+            if name:
+                operation_names.append(name)
+        
+        return operation_names

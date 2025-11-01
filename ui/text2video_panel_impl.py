@@ -129,6 +129,7 @@ class _Worker(QObject):
         super().__init__()
         self.task = task
         self.payload = payload
+        self.should_stop = False  # PR#4: Add stop flag
 
     def run(self):
         try:
@@ -241,6 +242,11 @@ class _Worker(QObject):
 
         # polling
         for _ in range(120):
+            # PR#4: Check stop flag
+            if self.should_stop:
+                self.log.emit("[INFO] Đã dừng xử lý theo yêu cầu người dùng.")
+                break
+                
             if not jobs:
                 break
             # Extract all operation names from all jobs
