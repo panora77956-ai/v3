@@ -443,8 +443,8 @@ class VideoBanHangPanel(QWidget):
         model_container_layout = QVBoxLayout(self.model_selector_container)
         model_container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # ModelSelectorWidget inside container
-        self.model_selector = ModelSelectorWidget()
+        # ModelSelectorWidget inside container (no title since parent has it)
+        self.model_selector = ModelSelectorWidget(title="")
         model_container_layout.addWidget(self.model_selector)
 
         # Add to GroupBox
