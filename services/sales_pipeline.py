@@ -22,7 +22,8 @@ def start_pipeline(project_name:str, ratio_str:str, scenes:List[Dict[str,Any]], 
     proj_id = st.get("default_project_id") or DEFAULT_PROJECT_ID
     
     # Log language configuration for debugging
-    print(f"[DEBUG] start_pipeline: Using language={lang} for video generation")
+    import sys
+    print(f"[DEBUG] start_pipeline: Using language={lang} for video generation", file=sys.stderr)
     
     client = LabsClient(tokens, on_event=None)
     aspect = _aspect(ratio_str)

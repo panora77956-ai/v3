@@ -1097,7 +1097,7 @@ class VideoBanHangPanel(QWidget):
             if reply == QMessageBox.Yes:
                 try:
                     if platform.system() == 'Windows':
-                        subprocess.Popen(f'explorer /select,"{destination}"')
+                        subprocess.Popen(['explorer', '/select,', str(destination)])
                     elif platform.system() == 'Darwin':
                         subprocess.Popen(['open', '-R', str(destination)])
                     else:
@@ -1339,7 +1339,9 @@ class VideoBanHangPanel(QWidget):
 
         self.btn_video.setEnabled(True)
         
-        # TODO: When video generation is implemented, call auto-download here:
+        # TODO: When video generation is fully implemented (replacing the stub above),
+        # integrate auto-download by calling _auto_download_video() with the generated
+        # video path. Example:
         # if video_path and self.chk_auto_download.isChecked():
         #     self._auto_download_video(video_path)
 

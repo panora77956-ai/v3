@@ -192,7 +192,8 @@ def build_outline(cfg:Dict[str,Any])->Dict[str,Any]:
     # Log language configuration for debugging
     speech_lang = cfg.get("speech_lang", "vi")
     voice_id = cfg.get("voice_id", "")
-    print(f"[DEBUG] build_outline: speech_lang={speech_lang}, voice_id={voice_id}")
+    import sys
+    print(f"[DEBUG] build_outline: speech_lang={speech_lang}, voice_id={voice_id}", file=sys.stderr)
     
     client = GeminiClient()
     sys_prompt = _build_system_prompt(cfg, sceneCount, models_json, product_count)
