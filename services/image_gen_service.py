@@ -202,7 +202,7 @@ def generate_image_with_rate_limit(
     # Call appropriate generation function with key rotation
     try:
         if model.lower() in ("gemini", "imagen_4"):
-            log(f"[IMAGE GEN] Tạo ảnh với {model} (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
+            log(f"[IMAGE GEN] Tạo ảnh với {model}...")
             
             # Build generation config with aspect ratio hint if provided
             generation_config = {
