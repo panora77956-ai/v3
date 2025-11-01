@@ -341,36 +341,30 @@ class VideoBanHangPanel(QWidget):
 
     def _build_ui(self):
         """Build the 2-column UI"""
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
+        # Main layout: Left column (400px) + Right area
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(8)
 
-        # Main horizontal layout
-        main = QHBoxLayout()
-        main.setSpacing(0)
-        main.setContentsMargins(0, 0, 0, 0)
-
-        # Left column (400px fixed - PR#5)
+        # LEFT COLUMN - EXACTLY 400px
         self.left_widget = QWidget()
         self.left_widget.setFixedWidth(400)
         left_layout = QVBoxLayout(self.left_widget)
-        left_layout.setContentsMargins(10, 10, 10, 10)
-        left_layout.setSpacing(10)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(6)
 
         self._build_left_column(left_layout)
 
-        # Right column (flexible)
+        main_layout.addWidget(self.left_widget)
+
+        # RIGHT AREA - Takes remaining space
         self.right_widget = QWidget()
         right_layout = QVBoxLayout(self.right_widget)
-        right_layout.setContentsMargins(10, 10, 10, 10)
-        right_layout.setSpacing(10)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         self._build_right_column(right_layout)
 
-        main.addWidget(self.left_widget)
-        main.addWidget(self.right_widget, 1)
-
-        root.addLayout(main)
+        main_layout.addWidget(self.right_widget, 1)
 
     def _build_left_column(self, layout):
         """Build left column with project settings"""
@@ -392,7 +386,7 @@ class VideoBanHangPanel(QWidget):
 
         self.ed_product = QPlainTextEdit()
         self.ed_product.setFont(FONT_INPUT)
-        self.ed_product.setMinimumHeight(100)
+        self.ed_product.setMinimumHeight(80)
         self.ed_product.setPlaceholderText("Nội dung chính / Đặc điểm sản phẩm")
 
         g.addWidget(QLabel("Tên dự án:"), 0, 0)
@@ -416,7 +410,8 @@ class VideoBanHangPanel(QWidget):
         pv = QVBoxLayout(gb_prod)
 
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
-        btn_prod.setObjectName('btn_import_nhap_product')
+        btn_prod.setObjectName('btn_primary')
+        btn_prod.setMinimumHeight(32)  # 32px per spec (action buttons are 42px)
         btn_prod.clicked.connect(self._pick_product_images)
         pv.addWidget(btn_prod)
 
@@ -546,10 +541,13 @@ class VideoBanHangPanel(QWidget):
         layout.addWidget(gb_cfg)
         layout.addStretch(1)
 
+        # Action buttons at bottom of left column
+        self._build_action_buttons(layout)
+
         self._update_scenes()
 
     def _build_right_column(self, layout):
-        """Build right column with results and logs"""
+        """Build right column with results tabs"""
 
         # Tab widget
         self.results_tabs = QTabWidget()
@@ -566,61 +564,54 @@ class VideoBanHangPanel(QWidget):
         social_tab = self._build_social_tab()
         self.results_tabs.addTab(social_tab, "📱 Social")
 
-        layout.addWidget(self.results_tabs, 3)
+        layout.addWidget(self.results_tabs, 1)
 
-        # Log area (reduced to 75px - 50% of original)
+        # Log area (compact)
         gb_log = QGroupBox("Nhật ký xử lý")
-
         lv = QVBoxLayout(gb_log)
         self.ed_log = QPlainTextEdit()
         self.ed_log.setFont(FONT_INPUT)
         self.ed_log.setReadOnly(True)
-        self.ed_log.setMaximumHeight(75)
+        self.ed_log.setMaximumHeight(80)
         lv.addWidget(self.ed_log)
+        layout.addWidget(gb_log)
 
-        layout.addWidget(gb_log, 1)
-
-        # Auto workflow button (3 steps in 1) (PR#6: Part C #13)
+    def _build_action_buttons(self, layout):
+        """Build action buttons at bottom of left column"""
+        # Auto workflow button
         self.btn_auto = QPushButton("⚡ Tạo video tự động (3 bước)")
-        self.btn_auto.setObjectName('btn_warning')  # Orange color
-        self.btn_auto.setMinimumHeight(48)
+        self.btn_auto.setObjectName("btn_auto")
+        self.btn_auto.setMinimumHeight(42)
         self.btn_auto.clicked.connect(self._on_auto_workflow)
         layout.addWidget(self.btn_auto)
 
-        # 3 buttons at bottom (PR#6: Part C #16-18)
-        btn_layout = QHBoxLayout()
-
+        # Individual step buttons
         self.btn_script = QPushButton("📝 Viết kịch bản")
-        self.btn_script.setObjectName('btn_primary')  # Blue color
+        self.btn_script.setObjectName("btn_primary_script")
         self.btn_script.setMinimumHeight(42)
         self.btn_script.clicked.connect(self._on_write_script)
+        layout.addWidget(self.btn_script)
 
         self.btn_images = QPushButton("🎨 Tạo ảnh")
-        self.btn_images.setObjectName('btn_warning')  # Orange color
+        self.btn_images.setObjectName("btn_warning_images")
         self.btn_images.setMinimumHeight(42)
         self.btn_images.clicked.connect(self._on_generate_images)
         self.btn_images.setEnabled(False)
+        layout.addWidget(self.btn_images)
 
         self.btn_video = QPushButton("🎬 Video")
-        self.btn_video.setObjectName('btn_success')  # Green color
+        self.btn_video.setObjectName("btn_success_video")
         self.btn_video.setMinimumHeight(42)
         self.btn_video.clicked.connect(self._on_generate_video)
         self.btn_video.setEnabled(False)
+        layout.addWidget(self.btn_video)
 
-        # Stop button (PR#6: Part C #16-18)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_gray")  # Gray color
+        self.btn_stop.setObjectName("btn_stop")
         self.btn_stop.setMinimumHeight(42)
-        self.btn_stop.setMaximumWidth(80)
-        self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_processing)
-
-        btn_layout.addWidget(self.btn_script)
-        btn_layout.addWidget(self.btn_images)
-        btn_layout.addWidget(self.btn_video)
-        btn_layout.addWidget(self.btn_stop)
-
-        layout.addLayout(btn_layout)
+        self.btn_stop.setEnabled(False)
+        layout.addWidget(self.btn_stop)
 
     def _build_scenes_tab(self):
         """Build scenes tab"""
