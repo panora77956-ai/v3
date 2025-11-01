@@ -3,11 +3,9 @@
 Video Bán Hàng Panel - Redesigned with 3-step workflow
 FIXED: Removed QSS autoload block to prevent theme conflicts
 """
-import base64
 import datetime
 import math
 import os
-import re
 import time
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -40,6 +38,7 @@ from services import sales_video_service as svc
 from ui.widgets.model_selector import ModelSelectorWidget
 from ui.widgets.scene_result_card import SceneResultCard
 from ui.workers.script_worker import ScriptWorker
+from utils.image_utils import convert_to_bytes
 
 # Fonts
 FONT_LABEL = QFont()
@@ -53,33 +52,6 @@ MODEL_IMG = 128
 
 # Rate limiting
 RATE_LIMIT_DELAY_SEC = 10.0  # Delay between image generation requests to avoid 429 errors
-
-
-def _convert_to_bytes(data):
-    """
-    Convert image data to bytes, handling both bytes and data URL formats.
-    
-    Args:
-        data: Image data as bytes or data URL string
-        
-    Returns:
-        tuple: (img_bytes, error_message) where img_bytes is None if conversion failed
-    """
-    if isinstance(data, bytes):
-        # Already bytes, use directly
-        return data, None
-    elif isinstance(data, str):
-        # Data URL string, convert to bytes
-        match = re.search(r'data:[^;]+;base64,(.+)', data)
-        if match:
-            try:
-                return base64.b64decode(match.group(1)), None
-            except Exception as e:
-                return None, f"Base64 decode failed: {str(e)}"
-        else:
-            return None, "Invalid data URL format"
-    else:
-        return None, "Unknown image format"
 
 
 class SceneCardWidget(QFrame):
@@ -308,7 +280,7 @@ class ImageGenerationWorker(QThread):
 
                         if img_data_url:
                             # Convert to bytes, handling both formats
-                            img_data, error = _convert_to_bytes(img_data_url)
+                            img_data, error = convert_to_bytes(img_data_url)
                             if img_data:
                                 self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
                             else:
@@ -356,7 +328,7 @@ class ImageGenerationWorker(QThread):
 
                     if thumb_data_url:
                         # Convert to bytes, handling both formats
-                        thumb_data, error = _convert_to_bytes(thumb_data_url)
+                        thumb_data, error = convert_to_bytes(thumb_data_url)
                         
                         if thumb_data:
                             import tempfile

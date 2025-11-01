@@ -2,11 +2,11 @@
 """
 Image Worker - Non-blocking image generation using QThread
 """
-import base64
-import re
 import time
 
 from PyQt5.QtCore import QThread, pyqtSignal
+
+from utils.image_utils import convert_to_bytes
 
 
 class ImageWorker(QThread):
@@ -68,19 +68,9 @@ class ImageWorker(QThread):
                     # Handle both bytes and data URL string formats
                     img_bytes = None
                     if img_result:
-                        if isinstance(img_result, bytes):
-                            # Already bytes, use directly
-                            img_bytes = img_result
-                        elif isinstance(img_result, str):
-                            # Data URL string, convert to bytes
-                            match = re.search(r'data:[^;]+;base64,(.+)', img_result)
-                            if match:
-                                try:
-                                    img_bytes = base64.b64decode(match.group(1))
-                                except Exception as e:
-                                    self.error.emit(scene_idx, f"Base64 decode failed: {str(e)}")
-                            else:
-                                self.error.emit(scene_idx, "Invalid data URL format")
+                        img_bytes, error = convert_to_bytes(img_result)
+                        if not img_bytes and error:
+                            self.error.emit(scene_idx, error)
                 else:
                     from services.whisk_service import generate_image
                     img_bytes = generate_image(prompt)
