@@ -570,8 +570,10 @@ class Text2VideoPane(QWidget):
                     with open(bible_path, "w", encoding="utf-8") as f:
                         f.write(self._character_bible.to_json())
                     self._append_log(f"[INFO] Character Bible đã lưu: {bible_path}")
+                except (IOError, OSError) as e:
+                    self._append_log(f"[WARN] Không thể lưu Character Bible: {type(e).__name__}: {e}")
                 except Exception as e:
-                    self._append_log(f"[WARN] Không thể lưu Character Bible: {e}")
+                    self._append_log(f"[WARN] Lỗi không xác định khi lưu Character Bible: {type(e).__name__}: {e}")
             
         except Exception as e:
             self._append_log(f"[ERR] Lỗi tạo Character Bible: {e}")

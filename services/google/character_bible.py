@@ -164,6 +164,7 @@ def _extract_characters_from_script(script: str, concept: str) -> List[Dict[str,
     
     # Simple extraction: Look for dialogue patterns (CHARACTER: dialogue)
     # More flexible pattern to catch names like "Dr. Smith", "Mary-Jane", etc.
+    # Note: \- and \. are escaped for clarity, though - in character class doesn't need escaping at end
     dialogue_pattern = r'^([A-Z][a-zA-Z\s\-\.]+):\s*(.+)$'
     names = set()
     
@@ -523,6 +524,7 @@ def _extract_marks(visual_identity: str) -> str:
 
 def _extract_color_near_word(text: str, word: str) -> Optional[str]:
     """Extract color mentioned near a specific word"""
+    # Note: 'gray' and 'grey' are both included to match different spellings
     colors = ["red", "blue", "green", "yellow", "white", "black", "gray", "grey", "purple", 
               "orange", "pink", "brown", "violet", "cyan", "magenta", "navy", "maroon", 
               "beige", "tan", "gold", "silver", "crimson", "indigo", "teal"]

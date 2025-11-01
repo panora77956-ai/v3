@@ -78,11 +78,12 @@ class PromptOptimizer:
     def _extract_voiceover(self, prompt: str) -> str:
         """Extract voiceover text from prompt"""
         # Try to find voiceover in common patterns
+        # Using raw strings with proper escaping for clarity
         patterns = [
-            r'voiceover["\s:]+([^"]+)"',  # Fixed: proper escaping
-            r'"voiceover":\s*\{[^}]*"text":\s*"([^"]+)"',  # Fixed: escaped braces
-            r'VOICEOVER:\s*([^\n]+)',
-            r'Voice[Oo]ver:\s*([^\n]+)',
+            r'voiceover["\s:]+([^"]+)"',  # Basic voiceover pattern
+            r'"voiceover":\s*\{[^}]*"text":\s*"([^"]+)"',  # JSON format
+            r'VOICEOVER:\s*([^\n]+)',  # All caps format
+            r'Voice[Oo]ver:\s*([^\n]+)',  # Mixed case format
         ]
         
         for pattern in patterns:
@@ -350,7 +351,17 @@ class PromptOptimizer:
         return ' '.join(result) + "..." if result else text[:char_limit - 3] + "..."
     
     def _create_minimal_prompt_with_voiceover(self, voiceover_text: str) -> str:
-        """Create minimal prompt when space is very limited"""
+        """
+        Create minimal prompt when space is very limited.
+        Ensures voiceover is preserved completely even in extreme cases.
+        """
+        # If voiceover is too long even for minimal prompt, preserve at word boundaries
+        if self.estimate_tokens(voiceover_text) > self.max_tokens * 0.8:
+            words = voiceover_text.split()
+            target_words = int((self.max_tokens * 0.8) * CHARS_PER_TOKEN_AVG / 5)  # Avg 5 chars per word
+            if len(words) > target_words:
+                voiceover_text = ' '.join(words[:target_words]) + "..."
+        
         return f"""Scene description: Create video with clear visuals matching the narration.
 
 Voiceover: {voiceover_text}

@@ -91,7 +91,7 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
             # Log the error for debugging but continue with fallback
             import sys
             print(f"[WARN] Character bible injection failed: {e}", file=sys.stderr)
-            pass  # Fallback to basic character_details
+            # Intentional fallback to basic character_details - continue processing
     elif character_bible and isinstance(character_bible, list) and len(character_bible)>0:
         # Use basic character bible
         main = character_bible[0]
