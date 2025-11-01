@@ -148,12 +148,12 @@ class MainWindow(QTabWidget):
 def main():
     app=QApplication(sys.argv)
     
-    # Apply unified Material Design theme v2
+    # Apply light Material Design theme
     try:
-        from ui.styles.unified_theme_v2 import apply_theme
-        apply_theme(app)
+        from ui.styles.light_theme import apply_light_theme
+        apply_light_theme(app)
     except Exception as e:
-        print(f"Warning: Could not apply unified theme: {e}")
+        print(f"Warning: Could not apply light theme: {e}")
     
     w=MainWindow(); w.show(); sys.exit(app.exec_())
 
