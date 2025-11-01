@@ -197,13 +197,14 @@ class ImageGenerationWorker(QThread):
     thumbnail_ready = pyqtSignal(int, bytes)
     finished = pyqtSignal(bool)
 
-    def __init__(self, outline, cfg, model_paths, prod_paths, use_whisk=False):
+    def __init__(self, outline, cfg, model_paths, prod_paths, use_whisk=False, character_bible=None):
         super().__init__()
         self.outline = outline
         self.cfg = cfg
         self.model_paths = model_paths
         self.prod_paths = prod_paths
         self.use_whisk = use_whisk
+        self.character_bible = character_bible
         self.should_stop = False
 
     def run(self):
@@ -224,6 +225,12 @@ class ImageGenerationWorker(QThread):
             
             self.progress.emit(f"[INFO] Sử dụng {len(api_keys)} API keys, model: {model}, tỷ lệ: {aspect_ratio}")
             
+            # Log character bible usage
+            if self.character_bible and hasattr(self.character_bible, 'characters'):
+                char_count = len(self.character_bible.characters)
+                if char_count > 0:
+                    self.progress.emit(f"[CHARACTER BIBLE] Injecting consistency anchors for {char_count} character(s)")
+            
             # Generate scene images
             scenes = self.outline.get("scenes", [])
             for i, scene in enumerate(scenes):
@@ -242,6 +249,15 @@ class ImageGenerationWorker(QThread):
 
                 # Get prompt
                 prompt = scene.get("prompt_image", "")
+                
+                # Inject character consistency if available
+                if self.character_bible and hasattr(self.character_bible, 'characters'):
+                    try:
+                        from services.google.character_bible import inject_character_consistency
+                        prompt = inject_character_consistency(prompt, self.character_bible)
+                        self.progress.emit(f"[CHARACTER BIBLE] Injected consistency anchors into scene {scene.get('index')}")
+                    except Exception as e:
+                        self.progress.emit(f"[WARNING] Failed to inject character consistency: {e}")
 
                 # Try to generate image
                 img_data = None
@@ -363,6 +379,7 @@ class VideoBanHangPanel(QWidget):
         self.last_outline = None
         self.scene_images = {}
         self.thumbnail_images = {}
+        self.character_bible = None  # Store character bible object
 
         # Cache system to persist data across workflow steps
         self.cache = {
@@ -370,6 +387,7 @@ class VideoBanHangPanel(QWidget):
             "scene_images": {},
             "scene_prompts": {},
             "thumbnails": {},
+            "character_bible": None,
         }
 
         self._build_ui()
@@ -663,11 +681,15 @@ class VideoBanHangPanel(QWidget):
         scenes_tab = self._build_scenes_tab()
         self.results_tabs.addTab(scenes_tab, "🎬 Cảnh")
 
-        # Tab 2: Thumbnail
+        # Tab 2: Character Bible
+        character_bible_tab = self._build_character_bible_tab()
+        self.results_tabs.addTab(character_bible_tab, "👤 Character Bible")
+
+        # Tab 3: Thumbnail
         thumbnail_tab = self._build_thumbnail_tab()
         self.results_tabs.addTab(thumbnail_tab, "📺 Thumbnail")
 
-        # Tab 3: Social
+        # Tab 4: Social
         social_tab = self._build_social_tab()
         self.results_tabs.addTab(social_tab, "📱 Social")
 
@@ -814,6 +836,73 @@ class VideoBanHangPanel(QWidget):
         self.scene_cards = []
 
         self.scenes_layout.addStretch()
+        scroll.setWidget(container)
+        return scroll
+
+    def _build_character_bible_tab(self):
+        """Build Character Bible tab"""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
+
+        # Header with title and buttons
+        header_layout = QHBoxLayout()
+        
+        title_label = QLabel("📖 Character Bible - Visual Consistency System")
+        title_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        header_layout.addWidget(title_label)
+        
+        header_layout.addStretch()
+        
+        # Regenerate button
+        self.btn_regen_bible = QPushButton("🔄 Regenerate")
+        self.btn_regen_bible.setObjectName("btn_warning_regen")
+        self.btn_regen_bible.setMinimumHeight(32)
+        self.btn_regen_bible.setEnabled(False)
+        self.btn_regen_bible.clicked.connect(self._regenerate_character_bible)
+        header_layout.addWidget(self.btn_regen_bible)
+        
+        # Copy button
+        self.btn_copy_bible = QPushButton("📋 Copy Summary")
+        self.btn_copy_bible.setObjectName("btn_info_copy")
+        self.btn_copy_bible.setMinimumHeight(32)
+        self.btn_copy_bible.setEnabled(False)
+        self.btn_copy_bible.clicked.connect(self._copy_character_bible)
+        header_layout.addWidget(self.btn_copy_bible)
+        
+        layout.addLayout(header_layout)
+
+        # Description
+        desc_label = QLabel(
+            "The Character Bible ensures consistent character appearance across all scenes. "
+            "Each character has 5 unique consistency anchors that are automatically injected "
+            "into scene prompts during image generation."
+        )
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: #666; padding: 8px; background: #f5f5f5; border-radius: 4px;")
+        layout.addWidget(desc_label)
+
+        # Character Bible display area
+        self.ed_character_bible = QTextEdit()
+        self.ed_character_bible.setReadOnly(True)
+        self.ed_character_bible.setFont(QFont("Courier New", 10))
+        self.ed_character_bible.setPlaceholderText(
+            "Character Bible will appear here after script generation.\n\n"
+            "It will include:\n"
+            "• Character physical blueprint (age, ethnicity, height, build, skin tone)\n"
+            "• Hair DNA (color, length, style, texture)\n"
+            "• Eye signature (color, shape, expression)\n"
+            "• Facial map (nose, lips, jawline, distinguishing marks)\n"
+            "• 5 unique consistency anchors for each character\n"
+            "• Scene reminders to maintain visual consistency"
+        )
+        layout.addWidget(self.ed_character_bible, 1)
+
+        layout.addStretch()
         scroll.setWidget(container)
         return scroll
 
@@ -1026,6 +1115,48 @@ class VideoBanHangPanel(QWidget):
         clipboard.setText(text)
         self._append_log("Đã copy vào clipboard")
 
+    def _regenerate_character_bible(self):
+        """Regenerate character bible from current script"""
+        if not self.cache.get("outline"):
+            QMessageBox.warning(self, "Chưa có kịch bản", "Vui lòng viết kịch bản trước.")
+            return
+        
+        self._append_log("🔄 Đang tạo lại Character Bible...")
+        
+        try:
+            from services.google.character_bible import create_character_bible, format_character_bible_for_display
+            
+            outline = self.cache["outline"]
+            script_json = outline.get("script_json", {})
+            existing_bible = script_json.get("character_bible", [])
+            
+            cfg = self._collect_cfg()
+            video_concept = f"{cfg.get('idea', '')} {cfg.get('product_main', '')}"
+            screenplay = outline.get("screenplay_text", "")
+            
+            # Create character bible
+            bible = create_character_bible(video_concept, screenplay, existing_bible)
+            self.character_bible = bible
+            self.cache["character_bible"] = bible
+            
+            # Update display
+            bible_text = format_character_bible_for_display(bible)
+            self.ed_character_bible.setPlainText(bible_text)
+            
+            self._append_log("✓ Character Bible đã được tạo lại")
+            
+        except Exception as e:
+            self._append_log(f"❌ Lỗi tạo Character Bible: {e}")
+            QMessageBox.critical(self, "Lỗi", f"Không thể tạo Character Bible: {e}")
+
+    def _copy_character_bible(self):
+        """Copy character bible summary to clipboard"""
+        text = self.ed_character_bible.toPlainText()
+        if text:
+            self._copy_to_clipboard(text)
+        else:
+            self._append_log("⚠ Character Bible trống")
+
     def _on_auto_workflow(self):
         """PR#5: Auto workflow - runs all 3 steps sequentially"""
         self._append_log("⚡ Bắt đầu quy trình tự động (3 bước)...")
@@ -1094,6 +1225,19 @@ class VideoBanHangPanel(QWidget):
 
             self._display_scene_cards(outline.get("scenes", []))
 
+            # Update Character Bible tab
+            character_bible = outline.get("character_bible")
+            character_bible_text = outline.get("character_bible_text", "")
+            if character_bible:
+                self.character_bible = character_bible
+                self.cache["character_bible"] = character_bible
+                self.ed_character_bible.setPlainText(character_bible_text)
+                self.btn_regen_bible.setEnabled(True)
+                self.btn_copy_bible.setEnabled(True)
+                self._append_log(f"✓ Tạo Character Bible với {len(character_bible.characters)} nhân vật")
+            else:
+                self.ed_character_bible.setPlainText("(Không có Character Bible)")
+
             self._append_log(f"✓ Tạo kịch bản thành công ({len(outline.get('scenes', []))} cảnh)")
             self._append_log(f"✓ Tạo {len(versions)} phiên bản social media")
             self._append_log(f"✓ Đã cache kịch bản và {len(self.cache['scene_prompts'])} prompts")
@@ -1159,8 +1303,11 @@ class VideoBanHangPanel(QWidget):
         self.btn_images.setEnabled(False)
         self.btn_stop.setEnabled(True)  # PR#4: Enable stop button
 
+        # Get character bible from cache
+        character_bible = self.cache.get("character_bible")
+        
         self.img_worker = ImageGenerationWorker(
-            self.cache["outline"], cfg, model_paths, self.prod_paths, use_whisk
+            self.cache["outline"], cfg, model_paths, self.prod_paths, use_whisk, character_bible
         )
 
         self.img_worker.progress.connect(self._append_log)

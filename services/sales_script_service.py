@@ -245,6 +245,26 @@ def build_outline(cfg:Dict[str,Any])->Dict[str,Any]:
                 }
             ]
         }
+    
+    # Generate Character Bible for visual consistency
+    from services.google.character_bible import create_character_bible, format_character_bible_for_display
+    character_bible = None
+    character_bible_text = ""
+    try:
+        # Extract character info from script if available
+        existing_bible = script_json.get("character_bible", [])
+        video_concept = f"{idea} {content}"
+        screenplay = json.dumps(script_json, ensure_ascii=False)
+        
+        # Create character bible
+        bible = create_character_bible(video_concept, screenplay, existing_bible)
+        character_bible = bible
+        character_bible_text = format_character_bible_for_display(bible)
+    except Exception as e:
+        # Fallback: create empty bible
+        from services.google.character_bible import CharacterBible
+        character_bible = CharacterBible()
+        character_bible_text = "(Failed to generate character bible)"
 
     return {
         "meta": {"created_at": datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"), "scenes": len(outline_scenes),
@@ -253,7 +273,9 @@ def build_outline(cfg:Dict[str,Any])->Dict[str,Any]:
         "scenes": outline_scenes,
         "social_media": social_media,
         "outline_vi": outline_vi,
-        "screenplay_text": json.dumps(script_json, ensure_ascii=False, indent=2)
+        "screenplay_text": json.dumps(script_json, ensure_ascii=False, indent=2),
+        "character_bible": character_bible,
+        "character_bible_text": character_bible_text
     }
 
 
