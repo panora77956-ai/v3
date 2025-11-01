@@ -227,26 +227,30 @@ class ProjectPanel(QWidget):
         self._timer=None
 
     def _build_ui(self):
-        root=QVBoxLayout(self); root.setContentsMargins(8,8,8,8); root.setSpacing(6)
+        root=QVBoxLayout(self); root.setContentsMargins(6,6,6,6); root.setSpacing(4)
         split=QSplitter(Qt.Horizontal); root.addWidget(split,1)
         split.setSizes([320, 960])  # 1/4 vs 3/4
 
         # LEFT (1/4)
-        left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(6)
+        left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(4)
 
         # Nhóm: Dự án (PR#6: Part D #19, #21-23)
         lv.addWidget(QLabel("<b>Dự án</b>"))
         rowm=QHBoxLayout()
+        rowm.setSpacing(4)
         self.ed_name=QLineEdit(self.project_name); self.ed_name.setReadOnly(True)
         rowm.addWidget(self.ed_name,1); lv.addLayout(rowm)
         rowx=QHBoxLayout()
+        rowx.setSpacing(4)
         self.btn_del_scene=QPushButton("🗑️ Xóa cảnh đã chọn")
         self.btn_del_scene.setObjectName('btn_danger')  # Red color
         self.btn_del_scene.setMinimumHeight(32)
+        self.btn_del_scene.setMaximumHeight(32)
         self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
         self.btn_del_all=QPushButton("🗑️ Xóa tất cả cảnh")
         self.btn_del_all.setObjectName('btn_danger')  # Red color
         self.btn_del_all.setMinimumHeight(32)
+        self.btn_del_all.setMaximumHeight(32)
         self.btn_del_all.clicked.connect(self._delete_all_scenes)
         rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
 
@@ -254,6 +258,8 @@ class ProjectPanel(QWidget):
         lv.addWidget(QLabel("Model / Tỉ lệ / Số video"))
         # FIXED: Complete model list with proper indentation
         self.cb_model=QComboBox()
+        self.cb_model.setMinimumHeight(28)
+        self.cb_model.setMaximumHeight(28)
         self.cb_model.addItems([
             "veo_3_1_i2v_s_fast_portrait_ultra",
             "veo_3_1_i2v_s_fast_ultra",
@@ -263,12 +269,15 @@ class ProjectPanel(QWidget):
             "veo_3_1_t2v"
         ])
         self.cb_aspect=QComboBox()
+        self.cb_aspect.setMinimumHeight(28)
+        self.cb_aspect.setMaximumHeight(28)
         self.cb_aspect.addItems(["VIDEO_ASPECT_RATIO_PORTRAIT","VIDEO_ASPECT_RATIO_LANDSCAPE","VIDEO_ASPECT_RATIO_SQUARE"])
         self.sp_copies=QSpinBox()
         self.sp_copies.setRange(1,12)
         self.sp_copies.setValue(4)
         self.sp_copies.valueChanged.connect(self._ensure_columns)
         rowcfg=QHBoxLayout()
+        rowcfg.setSpacing(4)
         rowcfg.addWidget(self.cb_model,1)
         rowcfg.addWidget(self.cb_aspect,1)
         rowcfg.addWidget(self.sp_copies,0)
@@ -278,9 +287,11 @@ class ProjectPanel(QWidget):
         lv.addWidget(QLabel("Prompt (nhập hoặc hiển thị từ file)"))
         self.ed_json=QTextEdit(); self.ed_json.setMinimumHeight(120); lv.addWidget(self.ed_json)
         rowp=QHBoxLayout()
+        rowp.setSpacing(4)
         btn_prompt=QPushButton("📄 Chọn file prompt")
         btn_prompt.setObjectName('btn_import')  # Orange color
         btn_prompt.setMinimumHeight(32)
+        btn_prompt.setMaximumHeight(32)
         btn_prompt.clicked.connect(self._pick_prompt_file)
         rowp.addWidget(btn_prompt)
         lv.addLayout(rowp)
@@ -288,22 +299,27 @@ class ProjectPanel(QWidget):
         # Ảnh: chọn thư mục hoặc chọn từng ảnh (PR#6: Part D #19)
         lv.addWidget(QLabel("Ảnh tham chiếu"))
         rowi=QHBoxLayout()
+        rowi.setSpacing(4)
         btn_img_dir=QPushButton("📁 Chọn thư mục ảnh")
         btn_img_dir.setObjectName('btn_import')  # Orange color
         btn_img_dir.setMinimumHeight(32)
+        btn_img_dir.setMaximumHeight(32)
         btn_img_dir.clicked.connect(self._pick_image_dir)
         rowi.addWidget(btn_img_dir)
         btn_imgs=QPushButton("🖼️ Chọn ảnh lẻ")
         btn_imgs.setObjectName('btn_import')  # Orange color
         btn_imgs.setMinimumHeight(32)
+        btn_imgs.setMaximumHeight(32)
         btn_imgs.clicked.connect(self._pick_images_multi)
         rowi.addWidget(btn_imgs)
         lv.addLayout(rowi)
 
         # Nút lớn bắt đầu (PR#6: Part D #19, #21-23)
         hb_run = QHBoxLayout()
+        hb_run.setSpacing(4)
         self.btn_run=QPushButton("▶ BẮT ĐẦU TẠO VIDEO")
-        self.btn_run.setMinimumHeight(46)
+        self.btn_run.setMinimumHeight(32)
+        self.btn_run.setMaximumHeight(32)
         self.btn_run.setObjectName('btn_success')  # Green color
         self.btn_run.clicked.connect(self._run_seq)
         self.btn_stop = QPushButton("⏹ Dừng")
@@ -316,7 +332,8 @@ class ProjectPanel(QWidget):
         lv.addLayout(hb_run)
 
         self.btn_run_all=QPushButton("⚡ CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
-        self.btn_run_all.setMinimumHeight(46)
+        self.btn_run_all.setMinimumHeight(32)
+        self.btn_run_all.setMaximumHeight(32)
         self.btn_run_all.setObjectName('btn_warning')  # Orange color
         self.btn_run_all.clicked.connect(lambda: self.run_all_requested.emit())
         lv.addWidget(self.btn_run_all)

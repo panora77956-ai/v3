@@ -22,17 +22,24 @@ class ProjectsPane(QWidget):
         self._ensure_default_project()
 
     def _build_ui(self):
-        root=QHBoxLayout(self); root.setContentsMargins(8,8,8,8); root.setSpacing(8)
+        root=QHBoxLayout(self); root.setContentsMargins(6,6,6,6); root.setSpacing(4)
         split=QSplitter(Qt.Horizontal); root.addWidget(split,1)
         split.setSizes([280, 1040])
 
         # Left column (project management) — 1/4 handled by parent panels, but here for list
-        left=QWidget(); lv=QVBoxLayout(left)
+        left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(4)
         self.ed_name=QLineEdit(); self.ed_name.setPlaceholderText("Tên dự án…")
-        self.btn_add=QPushButton("Thêm dự án"); self.btn_add.clicked.connect(self._add_project)
-        self.btn_del=QPushButton("Xóa dự án"); self.btn_del.clicked.connect(self._del_project)
+        self.btn_add=QPushButton("Thêm dự án")
+        self.btn_add.setMinimumHeight(32)
+        self.btn_add.setMaximumHeight(32)
+        self.btn_add.clicked.connect(self._add_project)
+        self.btn_del=QPushButton("Xóa dự án")
+        self.btn_del.setMinimumHeight(32)
+        self.btn_del.setMaximumHeight(32)
+        self.btn_del.clicked.connect(self._del_project)
         self.btn_run_all=QPushButton("CHẠY TẤT CẢ (THEO THỨ TỰ)")
-        self.btn_run_all.setMinimumHeight(44)
+        self.btn_run_all.setMinimumHeight(32)
+        self.btn_run_all.setMaximumHeight(32)
         self.btn_run_all.setStyleSheet("QPushButton{background:#43a047;color:white;font-weight:700;font-size:15px;border-radius:8px;padding:10px;} QPushButton:hover{background:#2e7d32;}")
         self.btn_run_all.clicked.connect(self._run_all_queue)
         # FIXED: Complete truncated line 38
