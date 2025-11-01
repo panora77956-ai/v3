@@ -39,6 +39,8 @@ class Text2VideoPane(QWidget):
         self._script_data = None  # Store script data for bible generation
         self._build_ui()
         self._apply_styles()
+        # Initialize folder label
+        self._update_folder_label()
 
     def _build_ui(self):
         root = QHBoxLayout(self); root.setSpacing(12); root.setContentsMargins(8,8,8,8)
@@ -96,10 +98,41 @@ class Text2VideoPane(QWidget):
         colL.addLayout(row4)
 
         # Row 5: Up Scale 4K checkbox (PR#4: Added as checkbox)
-        from PyQt5.QtWidgets import QCheckBox
         self.cb_upscale = QCheckBox("Up Scale 4K")
         self.cb_upscale.setStyleSheet("font-size: 14px; font-weight: 700;")
         colL.addWidget(self.cb_upscale)
+
+        # Row 5b: Download settings
+        download_group = QGroupBox("⬇️ Tải video")
+        download_layout = QVBoxLayout(download_group)
+        download_layout.setContentsMargins(8, 8, 8, 8)
+        download_layout.setSpacing(4)
+
+        # Auto-download checkbox
+        self.cb_auto_download = QCheckBox("Tự động tải video")
+        self.cb_auto_download.setChecked(True)
+        download_layout.addWidget(self.cb_auto_download)
+
+        # Quality selector
+        quality_row = QHBoxLayout()
+        quality_row.addWidget(QLabel("Chất lượng:"))
+        self.cb_quality = QComboBox()
+        self.cb_quality.addItems(["1080p", "720p"])
+        quality_row.addWidget(self.cb_quality, 1)
+        download_layout.addLayout(quality_row)
+
+        # Folder path display and change button
+        folder_row = QHBoxLayout()
+        self.lbl_download_folder = QLabel("Thư mục: Chưa đặt")
+        self.lbl_download_folder.setWordWrap(True)
+        self.lbl_download_folder.setStyleSheet("font-size: 11px; color: #666;")
+        folder_row.addWidget(self.lbl_download_folder, 1)
+        self.btn_change_folder = QPushButton("📁 Đổi")
+        self.btn_change_folder.setMaximumWidth(60)
+        folder_row.addWidget(self.btn_change_folder)
+        download_layout.addLayout(folder_row)
+
+        colL.addWidget(download_group)
 
         # Row 6: Single auto button + Stop button (PR#6: Part B #7-8)
         hb = QHBoxLayout()
@@ -125,10 +158,7 @@ class Text2VideoPane(QWidget):
         # RIGHT (2/3) - PR#6: Part B #5 - Implement 3 result tabs
         colR = QVBoxLayout(); colR.setSpacing(8)
 
-        # Story/Script section (above tabs)
-        colR.addWidget(QLabel("<b>Kịch bản chi tiết (Bible + Outline + Screenplay)</b>"))
-        self.view_story = QTextEdit(); self.view_story.setReadOnly(True); self.view_story.setMinimumHeight(150)
-        colR.addWidget(self.view_story,0)
+        # Note: Story/Script view now moved into Tab 1 of result_tabs below
 
         # Hidden table (legacy)
         self.table = QTableWidget(0, 6)
@@ -137,41 +167,46 @@ class Text2VideoPane(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setHidden(True); colR.addWidget(self.table, 0)
 
-        # Part D: Character Bible section with generate button
-        bible_group = QGroupBox("📖 Character Bible (Nhất quán nhân vật)")
-        bible_layout = QVBoxLayout(bible_group)
+        # PR#6: Part B #5 - Create result tabs with correct order
+        # Tab 1: Script Details, Tab 2: Character Bible, Tab 3: Scene Results, Tab 4: Thumbnail, Tab 5: Social
+        from PyQt5.QtWidgets import QTabWidget
+        self.result_tabs = QTabWidget()
+
+        # Tab 1: Script Details (Chi tiết kịch bản)
+        script_widget = QWidget()
+        script_layout = QVBoxLayout(script_widget)
+        script_layout.setContentsMargins(4, 4, 4, 4)
+        self.view_story = QTextEdit()
+        self.view_story.setReadOnly(True)
+        self.view_story.setPlaceholderText("Kịch bản chi tiết (Bible + Outline + Screenplay) sẽ hiển thị ở đây sau khi tạo")
+        script_layout.addWidget(self.view_story)
+        self.result_tabs.addTab(script_widget, "📝 Chi tiết kịch bản")
+
+        # Tab 2: Character Bible (Moved here from standalone section)
+        bible_widget = QWidget()
+        bible_layout = QVBoxLayout(bible_widget)
         bible_layout.setContentsMargins(8, 8, 8, 8)
         bible_layout.setSpacing(4)
-        
-        # Button row with generate and auto-download
+
+        # Button row with generate button
         bible_btn_row = QHBoxLayout()
         self.btn_generate_bible = QPushButton("✨ Tạo Character Bible")
         self.btn_generate_bible.setObjectName("btn_primary")
         self.btn_generate_bible.setEnabled(False)  # Enabled after script generation
         bible_btn_row.addWidget(self.btn_generate_bible)
-        
-        self.cb_auto_download = QCheckBox("Tự động tải video")
-        self.cb_auto_download.setChecked(True)
-        bible_btn_row.addWidget(self.cb_auto_download)
         bible_btn_row.addStretch()
-        
         bible_layout.addLayout(bible_btn_row)
-        
+
         # Character Bible text display
         self.view_bible = QTextEdit()
         self.view_bible.setReadOnly(False)  # Allow editing
         self.view_bible.setAcceptRichText(False)  # Plain text only for consistency
         self.view_bible.setPlaceholderText("Character Bible sẽ hiển thị ở đây sau khi tạo...\n\nCharacter Bible đảm bảo nhân vật có cùng diện mạo và đặc điểm trong tất cả các cảnh.")
-        self.view_bible.setMaximumHeight(200)
         bible_layout.addWidget(self.view_bible)
-        
-        colR.addWidget(bible_group, 0)
 
-        # PR#6: Part B #5 - Create 3 result tabs
-        from PyQt5.QtWidgets import QTabWidget
-        self.result_tabs = QTabWidget()
+        self.result_tabs.addTab(bible_widget, "📖 Character Bible")
 
-        # Tab 1: Kết quả cảnh (Scene results)
+        # Tab 3: Scene Results (Kết quả cảnh)
         scenes_widget = QWidget()
         scenes_layout = QVBoxLayout(scenes_widget)
         scenes_layout.setContentsMargins(4, 4, 4, 4)
@@ -181,7 +216,7 @@ class Text2VideoPane(QWidget):
         scenes_layout.addWidget(self.cards)
         self.result_tabs.addTab(scenes_widget, "🎬 Kết quả cảnh")
 
-        # Tab 2: Thumbnail
+        # Tab 4: Thumbnail
         thumbnail_widget = QWidget()
         thumbnail_layout = QVBoxLayout(thumbnail_widget)
         thumbnail_layout.setContentsMargins(4, 4, 4, 4)
@@ -191,7 +226,7 @@ class Text2VideoPane(QWidget):
         thumbnail_layout.addWidget(self.thumbnail_display)
         self.result_tabs.addTab(thumbnail_widget, "📺 Thumbnail")
 
-        # Tab 3: Social
+        # Tab 5: Social
         social_widget = QWidget()
         social_layout = QVBoxLayout(social_widget)
         social_layout.setContentsMargins(4, 4, 4, 4)
@@ -212,6 +247,7 @@ class Text2VideoPane(QWidget):
         self.cards.itemDoubleClicked.connect(self._open_card_prompt)
         self.btn_open_folder.clicked.connect(self._open_project_dir)
         self.btn_generate_bible.clicked.connect(self._on_generate_bible)
+        self.btn_change_folder.clicked.connect(self._on_change_folder)
 
         # Keep worker reference
         self.worker = None
@@ -300,14 +336,14 @@ class Text2VideoPane(QWidget):
         ratio = _ASPECT_MAP.get(ratio_key,"VIDEO_ASPECT_RATIO_LANDSCAPE")
         style=self.cb_style.currentText()
         scenes=[]
-        
+
         # Part D: Get character bible for injection
         character_bible_basic = self._script_data.get("character_bible", []) if self._script_data else []
-        
+
         for r in range(self.table.rowCount()):
             vi = self.table.item(r,1).text() if self.table.item(r,1) else ""
             tgt= self.table.item(r,2).text() if self.table.item(r,2) else vi
-            
+
             # Part D: Pass enhanced bible to build_prompt_json
             j=build_prompt_json(
                 r+1, vi, tgt, lang_code, ratio_key, style,
@@ -315,12 +351,13 @@ class Text2VideoPane(QWidget):
                 enhanced_bible=self._character_bible
             )
             scenes.append({"prompt": json.dumps(j, ensure_ascii=False, indent=2), "aspect": ratio})
-        
+
         payload=dict(
             scenes=scenes, copies=self._t2v_get_copies(), model_key=self.cb_model.currentText(),
             title=self._title, dir_videos=self._ctx.get("dir_videos",""),
             upscale_4k=self.cb_upscale.isChecked(),  # PR#4: Use checkbox instead of button
-            auto_download=self.cb_auto_download.isChecked()  # Part D: Auto-download flag
+            auto_download=self.cb_auto_download.isChecked(),  # Part D: Auto-download flag
+            quality=self.cb_quality.currentText()  # Video quality (1080p/720p)
         )
         if not payload["dir_videos"]:
             st=cfg.load(); root=st.get("download_dir") or ""
@@ -396,7 +433,7 @@ class Text2VideoPane(QWidget):
                 # Part D: Will be enhanced with bible later when user generates it
                 character_bible_basic = data.get("character_bible", [])
                 j=build_prompt_json(
-                    i, sc.get("prompt_vi","" ), sc.get("prompt_tgt","" ), lang_code, 
+                    i, sc.get("prompt_vi","" ), sc.get("prompt_tgt","" ), lang_code,
                     self.cb_ratio.currentText(), self.cb_style.currentText(),
                     character_bible=character_bible_basic
                 )
@@ -405,11 +442,11 @@ class Text2VideoPane(QWidget):
                         json.dump(j, f, ensure_ascii=False, indent=2)
             except Exception: pass
         self._append_log("[INFO] Kịch bản đã hiển thị & lưu file.")
-        
+
         # Part D: Store script data and enable bible generation button
         self._script_data = data
         self.btn_generate_bible.setEnabled(True)
-        
+
         # Part D: Auto-generate character bible if exists in data
         cb = data.get("character_bible") or []
         if cb:
@@ -535,34 +572,70 @@ class Text2VideoPane(QWidget):
             dlg.exec_()
         except Exception:
             pass
-    
+
     def _on_generate_bible(self):
         """Part D: Generate detailed character bible"""
         if not self._script_data:
             QMessageBox.warning(self, "Chưa có kịch bản", "Hãy tạo kịch bản trước khi tạo Character Bible.")
             return
-        
+
         self._append_log("[INFO] Đang tạo Character Bible chi tiết...")
         self._generate_character_bible_from_data(self._script_data)
         self._append_log("[INFO] Character Bible đã tạo xong.")
-    
+
+    def _on_change_folder(self):
+        """Change download folder"""
+        from PyQt5.QtWidgets import QFileDialog
+        st = cfg.load()
+        current_dir = st.get("download_root") or os.path.expanduser("~/Downloads")
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Chọn thư mục tải video",
+            current_dir,
+            QFileDialog.ShowDirsOnly
+        )
+
+        if folder:
+            # Update config
+            st["download_root"] = folder
+            cfg.save(st)
+            # Update label
+            self._update_folder_label(folder)
+            self._append_log(f"[INFO] Đã đổi thư mục tải về: {folder}")
+
+    def _update_folder_label(self, folder_path=None):
+        """Update folder label display"""
+        if not folder_path:
+            st = cfg.load()
+            folder_path = st.get("download_root") or "Chưa đặt"
+
+        # Truncate long paths
+        if len(folder_path) > 40:
+            folder_path = "..." + folder_path[-37:]
+
+        self.lbl_download_folder.setText(f"Thư mục: {folder_path}")
+
     def _generate_character_bible_from_data(self, data):
         """Part D: Generate character bible from script data"""
         try:
-            from services.google.character_bible import create_character_bible, format_character_bible_for_display
-            
+            from services.google.character_bible import (
+                create_character_bible,
+                format_character_bible_for_display,
+            )
+
             # Get components
             video_concept = self.ed_idea.toPlainText().strip()
             screenplay = data.get("screenplay_tgt", "") or data.get("screenplay_vi", "")
             existing_bible = data.get("character_bible", [])
-            
+
             # Create detailed bible
             self._character_bible = create_character_bible(video_concept, screenplay, existing_bible)
-            
+
             # Display in UI
             formatted = format_character_bible_for_display(self._character_bible)
             self.view_bible.setPlainText(formatted)
-            
+
             # Save to file
             if self._ctx.get("dir_script"):
                 bible_path = os.path.join(self._ctx["dir_script"], "character_bible_detailed.json")
@@ -574,7 +647,7 @@ class Text2VideoPane(QWidget):
                     self._append_log(f"[WARN] Không thể lưu Character Bible: {type(e).__name__}: {e}")
                 except Exception as e:
                     self._append_log(f"[WARN] Lỗi không xác định khi lưu Character Bible: {type(e).__name__}: {e}")
-            
+
         except Exception as e:
             self._append_log(f"[ERR] Lỗi tạo Character Bible: {e}")
             QMessageBox.warning(self, "Lỗi", f"Không thể tạo Character Bible: {e}")

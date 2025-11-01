@@ -237,6 +237,8 @@ class _Worker(QObject):
         title = p["title"]
         dir_videos = p["dir_videos"]
         up4k = p.get("upscale_4k", False)
+        quality = p.get("quality", "1080p")  # Get quality setting
+        auto_download = p.get("auto_download", True)  # Get auto-download setting
         thumbs_dir = os.path.join(dir_videos, "thumbs")
 
         jobs = []
@@ -270,21 +272,35 @@ class _Worker(QObject):
                     card={"scene":scene_idx,"copy":copy_idx,"status":"FAILED_START","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
                     self.job_card.emit(card)
 
-        # polling
-        for _ in range(120):
+        # polling with improved error handling
+        retry_count = {}  # Track retry attempts per operation
+        max_retries = 3
+
+        for poll_round in range(120):
             # PR#4: Check stop flag
             if self.should_stop:
                 self.log.emit("[INFO] Đã dừng xử lý theo yêu cầu người dùng.")
                 break
 
             if not jobs:
+                self.log.emit("[INFO] Tất cả video đã hoàn tất hoặc thất bại.")
                 break
+
             # Extract all operation names from all jobs
             names = []
             for job_info in jobs:
                 job_dict = job_info['body']
                 names.extend(job_dict.get("operation_names", []))
-            rs = client.batch_check_operations(names)
+
+            # Batch check with error handling
+            try:
+                rs = client.batch_check_operations(names)
+            except Exception as e:
+                self.log.emit(f"[WARN] Lỗi kiểm tra trạng thái (vòng {poll_round + 1}): {e}")
+                import time
+                time.sleep(10)  # Wait longer on error before retry
+                continue
+
             new_jobs=[]
             for job_info in jobs:
                 card = job_info['card']
@@ -292,31 +308,104 @@ class _Worker(QObject):
                 # Get the first operation name for this job
                 op_names = job_dict.get("operation_names", [])
                 if not op_names:
-                    new_jobs.append(job_info)  # Append job_info, not tuple
+                    # No operation name - keep in queue for one more iteration in case it appears
+                    # Initialize skip counter if not present
+                    if 'no_op_count' not in job_info:
+                        job_info['no_op_count'] = 0
+                    job_info['no_op_count'] += 1
+                    
+                    # Only skip after multiple attempts
+                    if job_info['no_op_count'] > 3:
+                        sc = card['scene']
+                        cp = card['copy']
+                        self.log.emit(f"[WARN] Cảnh {sc} video {cp}: không có operation name sau 3 lần thử")
+                    else:
+                        new_jobs.append(job_info)
                     continue
 
                 # Check status of first operation (for single copy jobs, there's only one)
                 op_name = op_names[0]
                 v = rs.get(op_name) or {}
                 stt = v.get('status') or 'PROCESSING'
+
+                # Update card status
                 card['status']=stt
                 self.job_card.emit(card)
-                if stt in ('COMPLETED','DONE','DONE_NO_URL'):
+
+                if stt in ('COMPLETED','DONE'):
+                    # Success - try to download if auto_download enabled
                     url = (v.get('video_urls') or [None])[0]
-                    if url:
-                        fn=f"{title}_canh_{card['scene']}_video_{card['copy']}.mp4"
+                    if url and auto_download:
+                        fn=f"{title}_canh_{card['scene']}_video_{card['copy']}_{quality}.mp4"
                         fp=os.path.join(dir_videos, fn)
-                        if self._download(url, fp):
-                            card['path']=fp; card['status']='DOWNLOADED'
-                            th=self._make_thumb(fp, thumbs_dir, card['scene'], card['copy'])
-                            if th: card['thumb']=th
+                        try:
+                            if self._download(url, fp):
+                                card['path']=fp
+                                card['status']='DOWNLOADED'
+                                th=self._make_thumb(fp, thumbs_dir, card['scene'], card['copy'])
+                                if th:
+                                    card['thumb']=th
+                                self.job_card.emit(card)
+                                sc = card['scene']
+                                cp = card['copy']
+                                self.log.emit(f"[INFO] Đã tải video cảnh {sc} copy {cp}")
+                            else:
+                                scene_id = card['scene']
+                                copy_id = card['copy']
+                                msg = f"[WARN] Tải video thất bại: cảnh {scene_id} copy {copy_id}"
+                                self.log.emit(msg)
+                                card['status']='DOWNLOAD_FAILED'
+                                card['url']=url
+                                self.job_card.emit(card)
+                        except Exception as e:
+                            self.log.emit(f"[ERR] Lỗi tải video cảnh {card['scene']}: {e}")
+                            card['status']='DOWNLOAD_FAILED'
+                            card['url']=url
                             self.job_card.emit(card)
+                    elif url:
+                        # Not auto-downloading, just store URL
+                        card['url']=url
+                        card['status']='READY'
+                        self.job_card.emit(card)
+                    else:
+                        scene_id = card['scene']
+                        self.log.emit(f"[WARN] Video hoàn tất nhưng không có URL: cảnh {scene_id}")
+                        card['status']='DONE_NO_URL'
+                        self.job_card.emit(card)
+                elif stt == 'FAILED':
+                    # Failed - check if we should retry by re-polling status
+                    # Note: For async operations, re-checking status is appropriate as
+                    # the backend may retry internally. We don't regenerate here to avoid
+                    # duplicate API calls and respect backend retry logic.
+                    retries = retry_count.get(op_name, 0)
+                    if retries < max_retries:
+                        retry_count[op_name] = retries + 1
+                        scene_id = card['scene']
+                        retry_info = f"lần {retries + 1}/{max_retries}"
+                        self.log.emit(f"[INFO] Thử lại cảnh {scene_id} ({retry_info})...")
+                        # Keep in job queue for retry
+                        new_jobs.append(job_info)
+                    else:
+                        scene_id = card['scene']
+                        copy_id = card['copy']
+                        msg = f"[ERR] Cảnh {scene_id} video {copy_id} thất bại sau {max_retries} lần thử"
+                        self.log.emit(msg)
+                        card['status']='FAILED'
+                        self.job_card.emit(card)
                 else:
-                    new_jobs.append(job_info)  # Append job_info, not tuple
+                    # Still processing
+                    new_jobs.append(job_info)
+
             jobs=new_jobs
-            try:
-                import time; time.sleep(5)
-            except Exception: pass
+
+            if jobs:
+                poll_info = f"vòng {poll_round + 1}/120"
+                self.log.emit(f"[INFO] Đang chờ {len(jobs)} video ({poll_info})...")
+                try:
+                    import time
+                    time.sleep(5)
+                except Exception:
+                    pass
 
         # 4K upscale
 
@@ -328,10 +417,13 @@ class _Worker(QObject):
                 for job_info in jobs:
                     card = job_info['card']
                     if card.get("path"):
-                        src=card["path"]; dst=src.replace(".mp4","_4k.mp4")
+                        src=card["path"]
+                        dst=src.replace(".mp4","_4k.mp4")
                         cmd=["ffmpeg","-y","-i",src,"-vf","scale=3840:-2","-c:v","libx264","-preset","fast",dst]
                         try:
                             subprocess.run(cmd, check=True)
-                            card["path"]=dst; card["status"]="UPSCALED_4K"; self.job_card.emit(card)
+                            card["path"]=dst
+                            card["status"]="UPSCALED_4K"
+                            self.job_card.emit(card)
                         except Exception as e:
                             self.log.emit(f"[ERR] 4K upscale fail: {e}")
