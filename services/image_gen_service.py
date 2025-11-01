@@ -104,11 +104,14 @@ _call_counts = {}
 
 def generate_image_with_rate_limit(
     prompt: str,
+    api_keys: list = None,
     model: str = "gemini",
+    aspect_ratio: str = "1:1",
     size: str = "1024x1024",
     delay_before: float = 0.0,
     rate_limit_delay: float = 10.0,
     max_calls_per_minute: int = 6,
+    logger=None,
     log_callback=None
 ) -> Optional[bytes]:
     """
@@ -116,19 +119,25 @@ def generate_image_with_rate_limit(
     
     Args:
         prompt: Image generation prompt
-        model: Model to use (gemini, dalle, etc.)
+        api_keys: List of API keys to rotate through (optional, uses config if not provided)
+        model: Model to use (gemini, dalle, imagen_4, etc.)
+        aspect_ratio: Image aspect ratio (e.g., "9:16", "16:9", "1:1", "4:5")
         size: Image size
         delay_before: Seconds to wait before making the call (default 0, no delay)
         rate_limit_delay: Minimum seconds between calls (default 10.0)
         max_calls_per_minute: Maximum API calls per minute (default 6)
+        logger: Optional callback function for logging (alias for log_callback)
         log_callback: Optional callback function for logging
     
     Returns:
         Generated image bytes or None if generation fails
     """
+    # Support both logger and log_callback parameter names
+    log_fn = logger or log_callback
+    
     def log(msg):
-        if log_callback:
-            log_callback(msg)
+        if log_fn:
+            log_fn(msg)
     
     global _last_call_time, _call_counts
     
@@ -169,16 +178,69 @@ def generate_image_with_rate_limit(
     _last_call_time[model_key] = time.time()
     _call_counts[model_key] += 1
     
-    # Call appropriate generation function
+    # Get API keys from parameter or config
+    if api_keys is None or len(api_keys) == 0:
+        refresh()
+        api_keys = get_all_keys('google')
+    
+    if not api_keys or len(api_keys) == 0:
+        log("[ERROR] Không có Google API keys khả dụng")
+        return None
+    
+    log(f"[INFO] Sử dụng {len(api_keys)} API keys với rotation")
+    
+    # Call appropriate generation function with key rotation
     try:
-        if model.lower() == "gemini":
-            log(f"[IMAGE GEN] Tạo ảnh với Gemini (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
-            # Call without additional rate limiting since we already waited
-            return generate_image_gemini(
-                prompt, 
-                enforce_rate_limit=False,  # Don't double-delay
-                log_callback=log_callback
-            )
+        if model.lower() in ("gemini", "imagen_4"):
+            log(f"[IMAGE GEN] Tạo ảnh với {model} (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
+            
+            # Use APIKeyRotator for key rotation
+            def api_call_with_key(api_key: str) -> bytes:
+                """Make API call with given key"""
+                url = gemini_image_endpoint(api_key)
+                
+                payload = {
+                    "contents": [{
+                        "parts": [{
+                            "text": prompt
+                        }]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.9,
+                        "topK": 40,
+                        "topP": 0.95,
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=IMAGE_GEN_TIMEOUT)
+                response.raise_for_status()
+                
+                data = response.json()
+                
+                # Extract image data
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    raise ImageGenError("No candidates in response")
+                
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if not parts:
+                    raise ImageGenError("No parts in candidate")
+                
+                # Look for inline_data with image
+                for part in parts:
+                    if "inline_data" in part:
+                        mime_type = part["inline_data"].get("mime_type", "")
+                        if mime_type.startswith("image/"):
+                            b64_data = part["inline_data"].get("data", "")
+                            if b64_data:
+                                return base64.b64decode(b64_data)
+                
+                raise ImageGenError("No image data found in response")
+            
+            # Use APIKeyRotator with provided keys
+            rotator = APIKeyRotator(api_keys, log_callback=log_fn)
+            return rotator.execute(api_call_with_key)
+            
         elif model.lower() == "dalle":
             log(f"[IMAGE GEN] Tạo ảnh với DALL-E...")
             # Import DALL-E client if available
