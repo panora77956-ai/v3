@@ -41,6 +41,9 @@ class APIKeyRotator:
         if self.log_callback:
             self.log_callback(msg)
     
+    # Maximum backoff delay in seconds
+    MAX_BACKOFF_SECONDS = 32
+    
     def execute(self, api_call: Callable[[str], Any]) -> Any:
         """
         Execute an API call with smart key rotation and error handling
@@ -61,8 +64,8 @@ class APIKeyRotator:
             # Exponential backoff: wait before trying next key (except first)
             if idx > 0:
                 delay = 2 ** idx  # 2s, 4s, 8s, 16s...
-                # Cap at 32 seconds to avoid excessive waits
-                delay = min(delay, 32)
+                # Cap at MAX_BACKOFF_SECONDS to avoid excessive waits
+                delay = min(delay, self.MAX_BACKOFF_SECONDS)
                 self._log(f"[BACKOFF] Waiting {delay}s before trying next key...")
                 time.sleep(delay)
             

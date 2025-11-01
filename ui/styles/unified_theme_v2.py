@@ -320,7 +320,7 @@ QTabBar::tab:selected {
 }
 
 QTabBar::tab:hover:!selected {
-    filter: brightness(1.1);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Group Box - 14px bold title with icon support (PR#5) */
