@@ -389,7 +389,7 @@ class VideoBanHangPanel(QWidget):
         self.ed_name.setFont(FONT_INPUT)
         self.ed_name.setPlaceholderText("Tự tạo nếu để trống")
         self.ed_name.setText(svc.default_project_name())
-        self.ed_name.setMinimumHeight(32)  # Increased height for better visibility
+        self.ed_name.setMinimumHeight(36)  # Issue 2: Increased from 32px to 36px for better visibility
 
         self.ed_idea = QPlainTextEdit()
         self.ed_idea.setFont(FONT_INPUT)
@@ -500,37 +500,68 @@ class VideoBanHangPanel(QWidget):
         self.ed_voice = make_widget(QLineEdit)
         self.ed_voice.setPlaceholderText("ElevenLabs VoiceID")
 
-        # PR#5: Expand language selector to 25+ languages with Vietnamese transliteration
+        # Issue 3: Language selector without prefixes - display only language names
         self.cb_lang = make_widget(QComboBox)
+        # Display names without language code prefixes
         LANGUAGES = [
-            "vi - Tiếng Việt (Vietnamese)",
-            "en - Tiếng Anh (English)",
-            "zh-CN - Tiếng Trung - Giản thể (Chinese Simplified)",
-            "zh-TW - Tiếng Trung - Phồn thể (Chinese Traditional)",
-            "ja - Tiếng Nhật (Japanese)",
-            "ko - Tiếng Hàn (Korean)",
-            "th - Tiếng Thái (Thai)",
-            "id - Tiếng Indonesia (Indonesian)",
-            "ms - Tiếng Mã Lai (Malay)",
-            "tl - Tiếng Tagalog (Filipino)",
-            "fr - Tiếng Pháp (French)",
-            "de - Tiếng Đức (German)",
-            "es - Tiếng Tây Ban Nha (Spanish)",
-            "pt - Tiếng Bồ Đào Nha (Portuguese)",
-            "it - Tiếng Ý (Italian)",
-            "ru - Tiếng Nga (Russian)",
-            "ar - Tiếng Ả Rập (Arabic)",
-            "hi - Tiếng Hindi (Hindi)",
-            "bn - Tiếng Bengal (Bengali)",
-            "pa - Tiếng Punjab (Punjabi)",
-            "tr - Tiếng Thổ Nhĩ Kỳ (Turkish)",
-            "pl - Tiếng Ba Lan (Polish)",
-            "uk - Tiếng Ukraina (Ukrainian)",
-            "nl - Tiếng Hà Lan (Dutch)",
-            "sv - Tiếng Thụy Điển (Swedish)",
-            "no - Tiếng Na Uy (Norwegian)",
+            "Tiếng Việt (Vietnamese)",
+            "Tiếng Anh (English)",
+            "Tiếng Trung - Giản thể (Chinese Simplified)",
+            "Tiếng Trung - Phồn thể (Chinese Traditional)",
+            "Tiếng Nhật (Japanese)",
+            "Tiếng Hàn (Korean)",
+            "Tiếng Thái (Thai)",
+            "Tiếng Indonesia (Indonesian)",
+            "Tiếng Mã Lai (Malay)",
+            "Tiếng Tagalog (Filipino)",
+            "Tiếng Pháp (French)",
+            "Tiếng Đức (German)",
+            "Tiếng Tây Ban Nha (Spanish)",
+            "Tiếng Bồ Đào Nha (Portuguese)",
+            "Tiếng Ý (Italian)",
+            "Tiếng Nga (Russian)",
+            "Tiếng Ả Rập (Arabic)",
+            "Tiếng Hindi (Hindi)",
+            "Tiếng Bengal (Bengali)",
+            "Tiếng Punjab (Punjabi)",
+            "Tiếng Thổ Nhĩ Kỳ (Turkish)",
+            "Tiếng Ba Lan (Polish)",
+            "Tiếng Ukraina (Ukrainian)",
+            "Tiếng Hà Lan (Dutch)",
+            "Tiếng Thụy Điển (Swedish)",
+            "Tiếng Na Uy (Norwegian)",
         ]
         self.cb_lang.addItems(LANGUAGES)
+        
+        # Mapping dictionary to convert display names to language codes
+        self.LANGUAGE_MAP = {
+            "Tiếng Việt (Vietnamese)": "vi",
+            "Tiếng Anh (English)": "en",
+            "Tiếng Trung - Giản thể (Chinese Simplified)": "zh-CN",
+            "Tiếng Trung - Phồn thể (Chinese Traditional)": "zh-TW",
+            "Tiếng Nhật (Japanese)": "ja",
+            "Tiếng Hàn (Korean)": "ko",
+            "Tiếng Thái (Thai)": "th",
+            "Tiếng Indonesia (Indonesian)": "id",
+            "Tiếng Mã Lai (Malay)": "ms",
+            "Tiếng Tagalog (Filipino)": "tl",
+            "Tiếng Pháp (French)": "fr",
+            "Tiếng Đức (German)": "de",
+            "Tiếng Tây Ban Nha (Spanish)": "es",
+            "Tiếng Bồ Đào Nha (Portuguese)": "pt",
+            "Tiếng Ý (Italian)": "it",
+            "Tiếng Nga (Russian)": "ru",
+            "Tiếng Ả Rập (Arabic)": "ar",
+            "Tiếng Hindi (Hindi)": "hi",
+            "Tiếng Bengal (Bengali)": "bn",
+            "Tiếng Punjab (Punjabi)": "pa",
+            "Tiếng Thổ Nhĩ Kỳ (Turkish)": "tr",
+            "Tiếng Ba Lan (Polish)": "pl",
+            "Tiếng Ukraina (Ukrainian)": "uk",
+            "Tiếng Hà Lan (Dutch)": "nl",
+            "Tiếng Thụy Điển (Swedish)": "sv",
+            "Tiếng Na Uy (Norwegian)": "no",
+        }
 
         self.sp_duration = make_widget(QSpinBox)
         self.sp_duration.setRange(8, 1200)
@@ -947,11 +978,9 @@ class VideoBanHangPanel(QWidget):
             "duration_sec": int(self.sp_duration.value()),
             "videos_count": int(self.sp_videos.value()),
             "ratio": self.cb_ratio.currentText(),
-            "speech_lang": (
-                self.cb_lang.currentText().split(" - ")[0]
-                if " - " in self.cb_lang.currentText()
-                else self.cb_lang.currentText()
-            ),  # PR#5: Extract language code
+            "speech_lang": self.LANGUAGE_MAP.get(
+                self.cb_lang.currentText(), "vi"
+            ),  # Issue 3: Use mapping to get language code
             "social_platform": self.cb_social.currentText(),
             "first_model_json": first_model_json,
             "product_count": len(self.prod_paths),

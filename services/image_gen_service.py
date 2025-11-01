@@ -94,3 +94,103 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
         return rotator.execute(api_call_with_key)
     except APIKeyRotationError as e:
         raise ImageGenError(str(e))
+
+
+# Issue 6: Add missing rate-limited image generation function
+# Rate limit tracking
+_last_call_time = {}
+_call_counts = {}
+
+
+def generate_image_with_rate_limit(
+    prompt: str,
+    model: str = "gemini",
+    size: str = "1024x1024",
+    delay_before: float = 0.0,
+    rate_limit_delay: float = 10.0,
+    max_calls_per_minute: int = 6,
+    log_callback=None
+) -> Optional[bytes]:
+    """
+    Generate image with rate limiting to avoid 429 errors
+    
+    Args:
+        prompt: Image generation prompt
+        model: Model to use (gemini, dalle, etc.)
+        size: Image size
+        delay_before: Seconds to wait before making the call (default 0, no delay)
+        rate_limit_delay: Minimum seconds between calls (default 10.0)
+        max_calls_per_minute: Maximum API calls per minute (default 6)
+        log_callback: Optional callback function for logging
+    
+    Returns:
+        Generated image bytes or None if generation fails
+    """
+    def log(msg):
+        if log_callback:
+            log_callback(msg)
+    
+    global _last_call_time, _call_counts
+    
+    # Optional delay before call (for manual rate limiting)
+    if delay_before > 0:
+        log(f"[RATE LIMIT] Đợi {delay_before}s trước khi gọi API...")
+        time.sleep(delay_before)
+    
+    # Check rate limit
+    current_time = time.time()
+    model_key = f"{model}_{size}"
+    
+    # Initialize tracking for this model
+    if model_key not in _last_call_time:
+        _last_call_time[model_key] = 0
+        _call_counts[model_key] = 0
+    
+    # Check if we need to wait based on last call time
+    time_since_last = current_time - _last_call_time[model_key]
+    
+    if time_since_last < rate_limit_delay and _last_call_time[model_key] > 0:
+        wait_time = rate_limit_delay - time_since_last
+        log(f"[RATE LIMIT] Chờ {wait_time:.1f}s trước lần gọi tiếp theo...")
+        time.sleep(wait_time)
+        current_time = time.time()
+    
+    # Reset call count every minute
+    if time_since_last > 60:
+        _call_counts[model_key] = 0
+    
+    # Check max calls per minute
+    if _call_counts[model_key] >= max_calls_per_minute:
+        log(f"[RATE LIMIT] Đạt giới hạn {max_calls_per_minute} lần gọi/phút. Chờ 60s...")
+        time.sleep(60)
+        _call_counts[model_key] = 0
+    
+    # Update tracking
+    _last_call_time[model_key] = time.time()
+    _call_counts[model_key] += 1
+    
+    # Call appropriate generation function
+    try:
+        if model.lower() == "gemini":
+            log(f"[IMAGE GEN] Tạo ảnh với Gemini (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
+            # Call without additional rate limiting since we already waited
+            return generate_image_gemini(
+                prompt, 
+                enforce_rate_limit=False,  # Don't double-delay
+                log_callback=log_callback
+            )
+        elif model.lower() == "dalle":
+            log(f"[IMAGE GEN] Tạo ảnh với DALL-E...")
+            # Import DALL-E client if available
+            try:
+                from services.openai.dalle_client import generate_image
+                return generate_image(prompt, size=size)
+            except ImportError:
+                log("[ERROR] DALL-E client không khả dụng")
+                return None
+        else:
+            log(f"[ERROR] Model không được hỗ trợ: {model}")
+            return None
+    except Exception as e:
+        log(f"[ERROR] Lỗi tạo ảnh: {str(e)[:200]}")
+        return None
