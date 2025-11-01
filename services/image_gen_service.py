@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, base64, json, requests, mimetypes, uuid, time
-from typing import Optional, Dict, Any
-from services.core.api_config import GEMINI_IMAGE_MODEL, gemini_image_endpoint, IMAGE_GEN_TIMEOUT
+from typing import Optional, Dict, Any, List
+from services.core.api_config import GEMINI_IMAGE_MODEL, GEMINI_BASE, gemini_image_endpoint, IMAGE_GEN_TIMEOUT
 from services.core.key_manager import get_all_keys, refresh
 from services.core.api_key_rotator import APIKeyRotator, APIKeyRotationError
 
@@ -112,12 +112,7 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
         raise ImageGenError(str(e))
 
 
-# Issue 6: Add missing rate-limited image generation function
-# Rate limit tracking
-_last_call_time = {}
-_call_counts = {}
-
-
+# New implementation: Intelligent rate-limited image generation with API key rotation
 def generate_image_with_rate_limit(
     prompt: str,
     api_keys: list = None,
@@ -125,13 +120,21 @@ def generate_image_with_rate_limit(
     aspect_ratio: str = "1:1",
     size: str = "1024x1024",
     delay_before: float = 0.0,
+    size: str = "1024x1024",
     rate_limit_delay: float = 10.0,
     max_calls_per_minute: int = 6,
     logger=None,
     log_callback=None
 ) -> Optional[bytes]:
     """
-    Generate image with rate limiting to avoid 429 errors
+    Generate image with intelligent API key rotation and rate limiting
+    
+    This function uses the new APIKeyRotationManager to handle:
+    - Per-key usage tracking and cooldowns
+    - Exponential backoff (2s, 4s, 8s) on rate limits
+    - 60s cooldown after exhausting retries on a key
+    - Minimum 2s interval between calls on same key
+    - Smart rotation that skips rate-limited keys
     
     Args:
         prompt: Image generation prompt
@@ -144,9 +147,20 @@ def generate_image_with_rate_limit(
         max_calls_per_minute: Maximum API calls per minute (default 6)
         logger: Optional callback function for logging (alias for log_callback)
         log_callback: Optional callback function for logging
+        
+        # Legacy parameters (kept for backwards compatibility, ignored):
+        delay_before: Ignored - rotation manager handles delays
+        size: Ignored - use aspect_ratio instead
+        rate_limit_delay: Ignored - rotation manager handles delays
+        max_calls_per_minute: Ignored - rotation manager handles rate limits
     
     Returns:
         Generated image bytes or None if generation fails
+        
+    Note:
+        - For Imagen 4: Automatically normalizes 4:5 to 3:4 (closest supported ratio)
+        - For Gemini: Accepts any aspect ratio from UI
+        - Legacy parameters (delay_before, size, etc.) are ignored - use new rotation manager
     """
     # Support both logger and log_callback parameter names
     log_fn = logger or log_callback
@@ -155,44 +169,25 @@ def generate_image_with_rate_limit(
         if log_fn:
             log_fn(msg)
     
-    global _last_call_time, _call_counts
+    # Load API keys if not provided
+    if api_keys is None:
+        from services.core.key_manager import get_all_keys, refresh
+        refresh()
+        api_keys = get_all_keys('google')
     
-    # Optional delay before call (for manual rate limiting)
-    if delay_before > 0:
-        log(f"[RATE LIMIT] Đợi {delay_before}s trước khi gọi API...")
-        time.sleep(delay_before)
+    if not api_keys:
+        log("[ERROR] No Google API keys available")
+        return None
     
-    # Check rate limit
-    current_time = time.time()
-    model_key = f"{model}_{size}"
+    log(f"[IMAGE GEN] Using {len(api_keys)} API keys with intelligent rotation")
     
-    # Initialize tracking for this model
-    if model_key not in _last_call_time:
-        _last_call_time[model_key] = 0
-        _call_counts[model_key] = 0
-    
-    # Check if we need to wait based on last call time
-    time_since_last = current_time - _last_call_time[model_key]
-    
-    if time_since_last < rate_limit_delay and _last_call_time[model_key] > 0:
-        wait_time = rate_limit_delay - time_since_last
-        log(f"[RATE LIMIT] Chờ {wait_time:.1f}s trước lần gọi tiếp theo...")
-        time.sleep(wait_time)
-        current_time = time.time()
-    
-    # Reset call count every minute
-    if time_since_last > 60:
-        _call_counts[model_key] = 0
-    
-    # Check max calls per minute
-    if _call_counts[model_key] >= max_calls_per_minute:
-        log(f"[RATE LIMIT] Đạt giới hạn {max_calls_per_minute} lần gọi/phút. Chờ 60s...")
-        time.sleep(60)
-        _call_counts[model_key] = 0
-    
-    # Update tracking
-    _last_call_time[model_key] = time.time()
-    _call_counts[model_key] += 1
+    # Normalize aspect ratio for Imagen 4
+    normalized_ratio = aspect_ratio
+    if model.lower() == 'imagen_4':
+        # Imagen 4 doesn't support 4:5, normalize to 3:4
+        if aspect_ratio == "4:5":
+            normalized_ratio = "3:4"
+            log(f"[ASPECT RATIO] Normalized {aspect_ratio} to {normalized_ratio} for Imagen 4")
     
     # Get API keys from parameter or config
     if api_keys is None or len(api_keys) == 0:
@@ -264,8 +259,20 @@ def generate_image_with_rate_limit(
                 log("[ERROR] DALL-E client không khả dụng")
                 return None
         else:
-            log(f"[ERROR] Model không được hỗ trợ: {model}")
+            log(f"[ERROR] Unsupported model: {model}")
             return None
+        
+        # Execute with intelligent rotation
+        log(f"[IMAGE GEN] Generating with {model} (aspect ratio: {normalized_ratio})...")
+        result = rotation_manager.execute_with_rotation(api_call_with_key)
+        
+        # Log final status
+        status = rotation_manager.get_status()
+        log(f"[STATUS] Keys: {status['available_keys']}/{status['total_keys']} available, "
+            f"{status['rate_limited_keys']} rate-limited")
+        
+        return result
+        
     except Exception as e:
-        log(f"[ERROR] Lỗi tạo ảnh: {str(e)[:200]}")
+        log(f"[ERROR] Image generation failed: {str(e)[:200]}")
         return None
