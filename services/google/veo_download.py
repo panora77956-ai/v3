@@ -201,14 +201,14 @@ class VeoDownloader:
 
         if isinstance(obj, dict):
             for key, value in obj.items():
-                is_url_key = key in url_keys and isinstance(value, str)
-                is_valid_url = (
-                    value.startswith("http://") or
-                    value.startswith("https://") or
-                    value.startswith("gs://")
-                )
-                if is_url_key and is_valid_url:
-                    urls.append(value)
+                if key in url_keys and isinstance(value, str):
+                    is_valid_url = (
+                        value.startswith("http://") or
+                        value.startswith("https://") or
+                        value.startswith("gs://")
+                    )
+                    if is_valid_url:
+                        urls.append(value)
                 else:
                     urls.extend(self._collect_urls(value))
         elif isinstance(obj, list):
