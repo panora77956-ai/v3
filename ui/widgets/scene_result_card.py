@@ -39,13 +39,13 @@ class SceneResultCard(QFrame):
         self.alternating_color = alternating_color
 
         # Set alternating background - Issue 2: Remove explicit border for flat design
+        # Use alternating backgrounds but with flat design (no explicit border)
         bg_color = "#E3F2FD" if alternating_color else "#FFFFFF"
         self.setStyleSheet(f"""
             QFrame {{
                 background: {bg_color};
                 border: none;
                 border-radius: 8px;
-                background: transparent;
                 margin: 4px 0px;
             }}
         """)
