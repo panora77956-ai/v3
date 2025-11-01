@@ -54,12 +54,12 @@ class SceneResultCard(QFrame):
     def _build_ui(self):
         """Build the compact card UI"""
         main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(4, 4, 4, 4)
+        main_layout.setSpacing(4)
 
-        # Left: Image preview (160x90px - 50% of original 320x180)
+        # Left: Image preview (80x80px - compact size)
         self.img_preview = QLabel()
-        self.img_preview.setFixedSize(160, 90)
+        self.img_preview.setFixedSize(80, 80)
         self.img_preview.setStyleSheet("""
             QLabel {
                 background: #F5F5F5;
@@ -74,7 +74,7 @@ class SceneResultCard(QFrame):
 
         # Right: Content area
         content_layout = QVBoxLayout()
-        content_layout.setSpacing(6)
+        content_layout.setSpacing(4)
 
         # Title (blue, bold)
         lbl_title = QLabel(f"Cảnh {self.scene_index}")
@@ -105,7 +105,7 @@ class SceneResultCard(QFrame):
 
         # Action buttons
         buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(6)
+        buttons_layout.setSpacing(4)
 
         btn_style = """
             QPushButton {
@@ -225,14 +225,14 @@ class SceneResultCard(QFrame):
         """Set image from bytes"""
         pixmap = QPixmap()
         pixmap.loadFromData(image_bytes)
-        self.img_preview.setPixmap(pixmap.scaled(160, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def set_image_pixmap(self, pixmap):
         """Set image from pixmap"""
-        self.img_preview.setPixmap(pixmap.scaled(160, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def set_image_path(self, path):
         """Set image from file path"""
         pixmap = QPixmap(path)
         if not pixmap.isNull():
-            self.img_preview.setPixmap(pixmap.scaled(160, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.img_preview.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
