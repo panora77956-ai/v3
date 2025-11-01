@@ -21,6 +21,62 @@ from PyQt5.QtWidgets import (
 )
 
 
+class ModelImageWidget(QLabel):
+    """Image widget with selection and delete - Issue 4"""
+    
+    clicked = pyqtSignal(int)  # Emit index when clicked
+    delete_requested = pyqtSignal(int)
+    
+    def __init__(self, image_path, index, parent=None):
+        super().__init__(parent)
+        self.image_path = image_path
+        self.index = index
+        self.selected = False
+        
+        self.setFixedSize(128, 128)
+        self.setScaledContents(True)
+        self.setPixmap(QPixmap(image_path))
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Delete button (hidden by default)
+        self.btn_delete = QPushButton("✕", self)
+        self.btn_delete.setFixedSize(24, 24)
+        self.btn_delete.move(104, 0)  # Top-right corner
+        self.btn_delete.setVisible(False)
+        self.btn_delete.clicked.connect(lambda: self.delete_requested.emit(self.index))
+        self.btn_delete.setStyleSheet("""
+            QPushButton {
+                background: #F44336;
+                color: white;
+                border-radius: 12px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover { background: #D32F2F; }
+        """)
+        
+        self._update_style()
+    
+    def mousePressEvent(self, event):
+        self.clicked.emit(self.index)
+    
+    def enterEvent(self, event):
+        self.btn_delete.setVisible(True)
+    
+    def leaveEvent(self, event):
+        self.btn_delete.setVisible(False)
+    
+    def set_selected(self, selected):
+        self.selected = selected
+        self._update_style()
+    
+    def _update_style(self):
+        if self.selected:
+            self.setStyleSheet("border: 3px solid #2196F3; border-radius: 4px;")
+        else:
+            self.setStyleSheet("border: 1px solid #E0E0E0; border-radius: 4px;")
+
+
 class ModelRow(QFrame):
     """Single model row with image + JSON editor"""
 
