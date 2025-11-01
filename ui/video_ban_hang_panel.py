@@ -55,6 +55,33 @@ MODEL_IMG = 128
 RATE_LIMIT_DELAY_SEC = 10.0  # Delay between image generation requests to avoid 429 errors
 
 
+def _convert_to_bytes(data):
+    """
+    Convert image data to bytes, handling both bytes and data URL formats.
+    
+    Args:
+        data: Image data as bytes or data URL string
+        
+    Returns:
+        tuple: (img_bytes, error_message) where img_bytes is None if conversion failed
+    """
+    if isinstance(data, bytes):
+        # Already bytes, use directly
+        return data, None
+    elif isinstance(data, str):
+        # Data URL string, convert to bytes
+        match = re.search(r'data:[^;]+;base64,(.+)', data)
+        if match:
+            try:
+                return base64.b64decode(match.group(1)), None
+            except Exception as e:
+                return None, f"Base64 decode failed: {str(e)}"
+        else:
+            return None, "Invalid data URL format"
+    else:
+        return None, "Unknown image format"
+
+
 class SceneCardWidget(QFrame):
     """Scene card widget with image preview and action buttons"""
 
@@ -280,23 +307,12 @@ class ImageGenerationWorker(QThread):
                         )
 
                         if img_data_url:
-                            # Handle both bytes and data URL string formats
-                            if isinstance(img_data_url, bytes):
-                                # Already bytes, use directly
-                                img_data = img_data_url
+                            # Convert to bytes, handling both formats
+                            img_data, error = _convert_to_bytes(img_data_url)
+                            if img_data:
                                 self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
-                            elif isinstance(img_data_url, str):
-                                # Data URL string, convert to bytes
-                                match = re.search(r'base64,(.+)', img_data_url)
-                                if match:
-                                    img_data = base64.b64decode(match.group(1))
-                                    self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
-                                else:
-                                    self.progress.emit(f"Cảnh {scene.get('index')}: Invalid data URL")
-                                    img_data = None
                             else:
-                                self.progress.emit(f"Cảnh {scene.get('index')}: Unknown image format")
-                                img_data = None
+                                self.progress.emit(f"Cảnh {scene.get('index')}: {error}")
                         else:
                             self.progress.emit(f"Cảnh {scene.get('index')}: Không tạo được ảnh")
                             img_data = None
@@ -339,18 +355,8 @@ class ImageGenerationWorker(QThread):
                     )
 
                     if thumb_data_url:
-                        # Handle both bytes and data URL string formats
-                        thumb_data = None
-                        if isinstance(thumb_data_url, bytes):
-                            # Already bytes, use directly
-                            thumb_data = thumb_data_url
-                        elif isinstance(thumb_data_url, str):
-                            # Data URL string, convert to bytes
-                            match = re.search(r'base64,(.+)', thumb_data_url)
-                            if match:
-                                thumb_data = base64.b64decode(match.group(1))
-                            else:
-                                self.progress.emit(f"Thumbnail {i+1}: Invalid data URL")
+                        # Convert to bytes, handling both formats
+                        thumb_data, error = _convert_to_bytes(thumb_data_url)
                         
                         if thumb_data:
                             import tempfile
@@ -372,6 +378,8 @@ class ImageGenerationWorker(QThread):
 
                             self.thumbnail_ready.emit(i, final_thumb)
                             self.progress.emit(f"Thumbnail {i+1}: ✓")
+                        else:
+                            self.progress.emit(f"Thumbnail {i+1}: {error}")
                     else:
                         self.progress.emit(f"Thumbnail {i+1}: Không tạo được")
 

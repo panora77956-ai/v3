@@ -73,9 +73,12 @@ class ImageWorker(QThread):
                             img_bytes = img_result
                         elif isinstance(img_result, str):
                             # Data URL string, convert to bytes
-                            match = re.search(r'base64,(.+)', img_result)
+                            match = re.search(r'data:[^;]+;base64,(.+)', img_result)
                             if match:
-                                img_bytes = base64.b64decode(match.group(1))
+                                try:
+                                    img_bytes = base64.b64decode(match.group(1))
+                                except Exception as e:
+                                    self.error.emit(scene_idx, f"Base64 decode failed: {str(e)}")
                             else:
                                 self.error.emit(scene_idx, "Invalid data URL format")
                 else:
