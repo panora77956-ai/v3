@@ -21,6 +21,82 @@ from PyQt5.QtWidgets import (
 )
 
 
+class ModelImageWidget(QLabel):
+    """
+    Image widget with selection and delete functionality.
+
+    Features:
+    - Click to select image (shows blue border highlight)
+    - Hover to show delete button (X in top-right corner)
+    - Visual feedback for selected state
+    - Pointer cursor on hover for better UX
+
+    Signals:
+    - clicked(int): Emitted when image is clicked, passes widget index
+    - delete_requested(int): Emitted when delete button is clicked
+
+    Usage:
+        widget = ModelImageWidget(image_path, index=0)
+        widget.clicked.connect(on_image_selected)
+        widget.delete_requested.connect(on_delete_image)
+    """
+
+    clicked = pyqtSignal(int)  # Emit index when clicked
+    delete_requested = pyqtSignal(int)
+
+    def __init__(self, image_path, index, parent=None):
+        super().__init__(parent)
+        self.image_path = image_path
+        self.index = index
+        self.selected = False
+
+        self.setFixedSize(128, 128)
+        self.setScaledContents(True)
+        self.setPixmap(QPixmap(image_path))
+        self.setCursor(Qt.PointingHandCursor)
+
+        # Delete button (hidden by default)
+        self.btn_delete = QPushButton("✕", self)
+        self.btn_delete.setFixedSize(24, 24)
+        self.btn_delete.move(104, 0)  # Top-right corner
+        self.btn_delete.setVisible(False)
+        self.btn_delete.clicked.connect(lambda: self.delete_requested.emit(self.index))
+        self.btn_delete.setStyleSheet("""
+            QPushButton {
+                background: #F44336;
+                color: white;
+                border-radius: 12px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover { background: #D32F2F; }
+        """)
+
+        self._update_style()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit(self.index)
+        super().mousePressEvent(event)
+
+    def enterEvent(self, event):
+        self.btn_delete.setVisible(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.btn_delete.setVisible(False)
+        super().leaveEvent(event)
+
+    def set_selected(self, selected):
+        self.selected = selected
+        self._update_style()
+
+    def _update_style(self):
+        if self.selected:
+            self.setStyleSheet("border: 3px solid #2196F3; border-radius: 4px;")
+        else:
+            self.setStyleSheet("border: 1px solid #E0E0E0; border-radius: 4px;")
+
+
 class ModelRow(QFrame):
     """Single model row with image + JSON editor"""
 
@@ -128,13 +204,13 @@ class ModelRow(QFrame):
             if not os.path.exists(path):
                 QMessageBox.warning(self, "Lỗi", "File không tồn tại")
                 return
-            
+
             # Issue 4: Try to load the image
             pixmap = QPixmap(path)
             if pixmap.isNull():
                 QMessageBox.warning(self, "Lỗi", "Không thể load ảnh. Vui lòng chọn file ảnh hợp lệ.")
                 return
-            
+
             # Issue 4: Successfully loaded, save path and display
             self.image_path = path
             self.img_preview.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))

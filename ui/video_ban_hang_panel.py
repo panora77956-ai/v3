@@ -213,18 +213,18 @@ class ImageGenerationWorker(QThread):
             from services.core.config import load as load_cfg
             cfg_data = load_cfg()
             api_keys = cfg_data.get('google_api_keys', [])
-            
+
             if not api_keys:
                 self.progress.emit("[ERROR] Không có Google API keys trong config")
                 self.finished.emit(False)
                 return
-            
+
             # Get aspect ratio and model from config
             aspect_ratio = self.cfg.get('ratio', '9:16')
             model = 'gemini' if 'Gemini' in self.cfg.get('image_model', 'Gemini') else 'imagen_4'
-            
+
             self.progress.emit(f"[INFO] Sử dụng {len(api_keys)} API keys, model: {model}, tỷ lệ: {aspect_ratio}")
-            
+
             # Generate scene images
             scenes = self.outline.get("scenes", [])
             for i, scene in enumerate(scenes):
@@ -570,7 +570,7 @@ class VideoBanHangPanel(QWidget):
             "Tiếng Na Uy (Norwegian)",
         ]
         self.cb_lang.addItems(LANGUAGES)
-        
+
         # Mapping dictionary to convert display names to language codes
         self.LANGUAGE_MAP = {
             "Tiếng Việt (Vietnamese)": "vi",
@@ -864,38 +864,75 @@ class VideoBanHangPanel(QWidget):
         return scroll
 
     def _build_social_tab(self):
-        """Build social media tab with combined caption + hashtags"""
+        """Build social media tab with improved formatting - Issue 5"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
 
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setSpacing(20)  # Issue 5: Increased from 16 for better separation
 
         self.social_version_widgets = []
         for i in range(3):
-            version_card = QGroupBox(f"=== Phiên bản {i+1} ===")
-
+            version_card = QGroupBox(f"📱 Phiên bản {i+1}")
             card_layout = QVBoxLayout(version_card)
+            card_layout.setSpacing(12)
 
-            # Combined text area for caption + hashtags
-            ed_combined = QTextEdit()
-            ed_combined.setReadOnly(True)
-            ed_combined.setMinimumHeight(120)
-            ed_combined.setPlaceholderText(
-                "Caption và hashtags sẽ hiển thị ở đây sau khi tạo kịch bản"
+            # Caption section
+            lbl_caption = QLabel("📝 Caption:")
+            lbl_caption.setFont(QFont("Segoe UI", 13, QFont.Bold))
+            card_layout.addWidget(lbl_caption)
+
+            ed_caption = QTextEdit()
+            ed_caption.setReadOnly(True)
+            ed_caption.setMinimumHeight(100)
+            ed_caption.setFont(QFont("Segoe UI", 13))
+            card_layout.addWidget(ed_caption)
+
+            # Hashtags section
+            lbl_hashtags = QLabel("🏷️ Hashtags:")
+            lbl_hashtags.setFont(QFont("Segoe UI", 13, QFont.Bold))
+            card_layout.addWidget(lbl_hashtags)
+
+            ed_hashtags = QTextEdit()
+            ed_hashtags.setReadOnly(True)
+            ed_hashtags.setMinimumHeight(60)
+            ed_hashtags.setFont(QFont("Courier New", 12))  # Issue 5: Monospace for hashtags
+            card_layout.addWidget(ed_hashtags)
+
+            # Copy buttons
+            btn_row = QHBoxLayout()
+
+            btn_copy_caption = QPushButton("📋 Copy Caption")
+            btn_copy_caption.setObjectName("btn_info_copy")
+            btn_copy_caption.clicked.connect(
+                lambda _, e=ed_caption: self._copy_to_clipboard(e.toPlainText())
             )
-            card_layout.addWidget(ed_combined)
+            btn_row.addWidget(btn_copy_caption)
 
-            btn_copy = QPushButton("📋 Copy toàn bộ")
-            btn_copy.setObjectName("btn_info_copy_caption")
-            btn_copy.clicked.connect(
-                lambda _, e=ed_combined: self._copy_to_clipboard(e.toPlainText())
+            btn_copy_hashtags = QPushButton("📋 Copy Hashtags")
+            btn_copy_hashtags.setObjectName("btn_info_copy")
+            btn_copy_hashtags.clicked.connect(
+                lambda _, e=ed_hashtags: self._copy_to_clipboard(e.toPlainText())
             )
-            card_layout.addWidget(btn_copy)
+            btn_row.addWidget(btn_copy_hashtags)
 
-            self.social_version_widgets.append({"widget": version_card, "combined": ed_combined})
+            btn_copy_all = QPushButton("📋 Copy All")
+            btn_copy_all.setObjectName("btn_primary")
+            btn_copy_all.clicked.connect(
+                lambda _, c=ed_caption, h=ed_hashtags:
+                    self._copy_to_clipboard(f"{c.toPlainText()}\n\n{h.toPlainText()}")
+            )
+            btn_row.addWidget(btn_copy_all)
+
+            card_layout.addLayout(btn_row)
+
+            self.social_version_widgets.append({
+                "widget": version_card,
+                "caption": ed_caption,
+                "hashtags": ed_hashtags
+            })
 
             layout.addWidget(version_card)
 
@@ -1092,7 +1129,7 @@ class VideoBanHangPanel(QWidget):
             social_media = outline.get("social_media", {})
             versions = social_media.get("versions", [])
 
-            # Update social tab with combined format
+            # Update social tab with separate caption and hashtags - Issue 5
             for i, version in enumerate(versions[:3]):
                 if i < len(self.social_version_widgets):
                     widget_data = self.social_version_widgets[i]
@@ -1100,11 +1137,9 @@ class VideoBanHangPanel(QWidget):
                     caption = version.get("caption", "")
                     hashtags = " ".join(version.get("hashtags", []))
 
-                    # Combined format
-                    combined_text = (
-                        f"=== Phiên bản {i+1} ===\n\n{caption}\n\n{hashtags}\n\n{'=' * 40}"
-                    )
-                    widget_data["combined"].setPlainText(combined_text)
+                    # Issue 5: Separate fields for better readability
+                    widget_data["caption"].setPlainText(caption)
+                    widget_data["hashtags"].setPlainText(hashtags)
 
             self._display_scene_cards(outline.get("scenes", []))
 

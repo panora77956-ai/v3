@@ -229,10 +229,12 @@ class ProjectPanel(QWidget):
     def _build_ui(self):
         root=QVBoxLayout(self); root.setContentsMargins(6,6,6,6); root.setSpacing(4)
         split=QSplitter(Qt.Horizontal); root.addWidget(split,1)
-        split.setSizes([320, 960])  # 1/4 vs 3/4
+        split.setSizes([400, 1200])  # Issue 3: 400px left (20%) vs remaining right (80%)
 
-        # LEFT (1/4)
-        left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(4)
+        # LEFT - Fixed 400px width for controls (Issue 3)
+        left=QWidget()
+        left.setFixedWidth(400)
+        lv=QVBoxLayout(left); lv.setSpacing(4)
 
         # Nhóm: Dự án (PR#6: Part D #19, #21-23)
         lv.addWidget(QLabel("<b>Dự án</b>"))
@@ -342,7 +344,7 @@ class ProjectPanel(QWidget):
 
         split.addWidget(left)
 
-        # RIGHT (3/4)
+        # RIGHT - Takes remaining space for results (Issue 3: 80% width)
         right=QWidget(); rv=QVBoxLayout(right)
         self.pb=QProgressBar(); self.pb.setFormat("%p%"); rv.addWidget(self.pb)
         self.pb_text=QLabel("Sẵn sàng"); rv.addWidget(self.pb_text)
