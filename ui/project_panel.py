@@ -458,6 +458,9 @@ class ProjectPanel(QWidget):
 
     def _run_seq(self):
         try:
+            # PR#5: Refresh tokens only when generation starts (not on tab show)
+            self.refresh_tokens()
+            
             if not self._ensure_client(): return
             if not self.scenes and self.ed_json.toPlainText().strip():
                 try:
@@ -588,9 +591,9 @@ class ProjectPanel(QWidget):
         self.console.info("Đã xóa toàn bộ cảnh.")
 
     def showEvent(self, event):
-        """PR#4: Reload tokens when tab becomes visible"""
+        """PR#5: Don't reload tokens on every show - only on generation start"""
         super().showEvent(event)
-        self.refresh_tokens()
+        # Token refresh moved to _run_seq to avoid spam logs
 
     def refresh_tokens(self):
         """PR#4: Reload tokens from config"""
