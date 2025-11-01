@@ -16,9 +16,11 @@ except Exception:  # pragma: no cover
     from config import load as load_cfg
 
 try:
-    from services.labs_flow_service import LabsClient, DEFAULT_PROJECT_ID
+    from services.google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from services.utils.video_downloader import VideoDownloader
 except Exception:  # pragma: no cover
-    from labs_flow_service import LabsClient, DEFAULT_PROJECT_ID
+    from google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from utils.video_downloader import VideoDownloader
 
 def safe_name(s: str)->str:
     s = s or ""
@@ -151,8 +153,9 @@ class ThumbWorker(QObject):
 
 class DownloadWorker(QObject):
     log = pyqtSignal(str,str); progress = pyqtSignal(int, str); row_update = pyqtSignal(int, dict); finished = pyqtSignal(int,int, bool)
-    def __init__(self, jobs, outdir, only_missing=True, expected_copies=1, project_name="project"):
+    def __init__(self, jobs, outdir, only_missing=True, expected_copies=1, project_name="project", video_downloader=None):
         super().__init__(); self.jobs=jobs; self.outdir=outdir; self.only_missing=only_missing; self.expected_copies=expected_copies; self.project_name=project_name
+        self.video_downloader = video_downloader
     def run(self):
         os.makedirs(self.outdir, exist_ok=True)
         total=max(1,len(self.jobs)); done=0; ok=0; attempts=0
@@ -168,9 +171,12 @@ class DownloadWorker(QObject):
                 base = f"{safe_name(self.project_name)}_canh_{j.get('scene_id','')}_video_{i}"
                 dest=os.path.join(self.outdir, f"{base}.mp4")
                 try:
-                    import requests
-                    with requests.get(u, stream=True, timeout=300, allow_redirects=True) as r:
-                        r.raise_for_status(); open(dest,"wb").write(r.content)
+                    if self.video_downloader:
+                        self.video_downloader.download(u, dest)
+                    else:
+                        import requests
+                        with requests.get(u, stream=True, timeout=300, allow_redirects=True) as r:
+                            r.raise_for_status(); open(dest,"wb").write(r.content)
                     j["downloaded_idx"].add(i); j.setdefault("local_paths",[]).append(dest); j["status"]="DOWNLOADED"; ok+=1
                     # nếu đủ số lượng video mong đợi -> set thời gian hoàn thành
                     if len(j["downloaded_idx"]) >= min(self.expected_copies, len(vids)):
@@ -192,7 +198,9 @@ class ProjectPanel(QWidget):
         self.settings_provider = settings_provider or (lambda: load_cfg())
         self.tokens=[]; self.client=None; self.jobs=[]; self.max_videos=4
         self.scenes=[]; self.image_files=[]; self._seq_running=False
-        self._build_ui(); self.console.info(f"Dự án '{project_name}' đã sẵn sàng.")
+        self._build_ui()
+        self.video_downloader = VideoDownloader(log_callback=self.console.info)
+        self.console.info(f"Dự án '{project_name}' đã sẵn sàng.")
         self._timer=None
 
     def _build_ui(self):
@@ -454,7 +462,7 @@ class ProjectPanel(QWidget):
             QMessageBox.warning(self, "Thiếu token", "Vào tab Cài đặt để nhập token trước khi chạy.")
             return False
         if not self.client:
-            self.client = LabsClient(toks, on_event=self._on_event)
+            self.client = LabsFlowClient(toks, on_event=self._on_event)
         return True
 
     def _run_seq(self):
@@ -538,7 +546,7 @@ class ProjectPanel(QWidget):
 
     def _download(self, only_missing, outdir):
         self._t3=QThread(self)
-        self._w3=DownloadWorker(self.jobs,outdir,only_missing=only_missing, expected_copies=int(self.sp_copies.value()), project_name=self.project_name)
+        self._w3=DownloadWorker(self.jobs,outdir,only_missing=only_missing, expected_copies=int(self.sp_copies.value()), project_name=self.project_name, video_downloader=self.video_downloader)
         self._w3.moveToThread(self._t3)
         self._t3.started.connect(self._w3.run); self._w3.progress.connect(self._on_prog); self._w3.row_update.connect(self._refresh_row)
         self._w3.log.connect(lambda lv,msg: getattr(self.console, lv.lower())(msg) if hasattr(self.console, lv.lower()) else self.console.info(msg))
@@ -606,7 +614,7 @@ class ProjectPanel(QWidget):
                 self.console.info(f"[INFO] Đã cập nhật {len(tokens)} Google Labs tokens")
                 # Recreate client with new tokens
                 if self.tokens:
-                    self.client = LabsClient(self.tokens, on_event=None)
+                    self.client = LabsFlowClient(self.tokens, on_event=None)
         except Exception as e:
             self.console.err(f"[ERROR] Không thể tải tokens: {e}")
     

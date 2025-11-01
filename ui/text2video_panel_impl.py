@@ -8,7 +8,11 @@ from PyQt5.QtCore import Qt, QLocale, QThread, pyqtSignal, QObject, QUrl
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.Qt import QDesktopServices
 from utils import config as cfg
-from services.labs_flow_service import LabsClient, DEFAULT_PROJECT_ID
+from services.google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+from services.utils.video_downloader import VideoDownloader
+
+# Backward compatibility
+LabsClient = LabsFlowClient
 
 _ASPECT_MAP = {
     "16:9": "VIDEO_ASPECT_RATIO_LANDSCAPE",
@@ -130,6 +134,7 @@ class _Worker(QObject):
         self.task = task
         self.payload = payload
         self.should_stop = False  # PR#4: Add stop flag
+        self.video_downloader = VideoDownloader(log_callback=lambda msg: self.log.emit(msg))
 
     def run(self):
         try:
@@ -185,11 +190,7 @@ class _Worker(QObject):
 
     def _download(self, url, dst_path):
         try:
-            import requests
-            r = requests.get(url, timeout=300)
-            r.raise_for_status()
-            with open(dst_path, "wb") as f:
-                f.write(r.content)
+            self.video_downloader.download(url, dst_path)
             return True
         except Exception as e:
             self.log.emit(f"[ERR] Download fail: {e}")
