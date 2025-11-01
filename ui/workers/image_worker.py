@@ -6,6 +6,8 @@ import time
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
+from utils.image_utils import convert_to_bytes
+
 
 class ImageWorker(QThread):
     """
@@ -55,13 +57,20 @@ class ImageWorker(QThread):
                 # Generate image based on model using rate-limited function
                 if self.model == "gemini":
                     from services.image_gen_service import generate_image_with_rate_limit
-                    img_bytes = generate_image_with_rate_limit(
+                    img_result = generate_image_with_rate_limit(
                         prompt=prompt,
                         api_keys=api_keys,
                         model="gemini",
                         aspect_ratio=aspect_ratio,
                         logger=lambda msg: self.progress.emit(scene_idx, msg)
                     )
+                    
+                    # Handle both bytes and data URL string formats
+                    img_bytes = None
+                    if img_result:
+                        img_bytes, error = convert_to_bytes(img_result)
+                        if not img_bytes and error:
+                            self.error.emit(scene_idx, error)
                 else:
                     from services.whisk_service import generate_image
                     img_bytes = generate_image(prompt)

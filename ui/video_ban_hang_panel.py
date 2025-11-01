@@ -38,6 +38,7 @@ from services import sales_video_service as svc
 from ui.widgets.model_selector import ModelSelectorWidget
 from ui.widgets.scene_result_card import SceneResultCard
 from ui.workers.script_worker import ScriptWorker
+from utils.image_utils import convert_to_bytes
 
 # Fonts
 FONT_LABEL = QFont()
@@ -268,7 +269,7 @@ class ImageGenerationWorker(QThread):
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
 
                         # Use rate-limited generation with API key rotation
-                        img_data = image_gen_service.generate_image_with_rate_limit(
+                        img_data_url = image_gen_service.generate_image_with_rate_limit(
                             prompt=prompt,
                             api_keys=api_keys,
                             model=model,
@@ -277,12 +278,19 @@ class ImageGenerationWorker(QThread):
                             logger=lambda msg: self.progress.emit(msg),
                         )
 
-                        if img_data:
-                            self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                        if img_data_url:
+                            # Convert to bytes, handling both formats
+                            img_data, error = convert_to_bytes(img_data_url)
+                            if img_data:
+                                self.progress.emit(f"Cảnh {scene.get('index')}: Gemini ✓")
+                            else:
+                                self.progress.emit(f"Cảnh {scene.get('index')}: {error}")
                         else:
                             self.progress.emit(f"Cảnh {scene.get('index')}: Không tạo được ảnh")
+                            img_data = None
                     except Exception as e:
                         self.progress.emit(f"Gemini failed for scene {scene.get('index')}: {e}")
+                        img_data = None
 
                 if img_data:
                     self.scene_image_ready.emit(scene.get("index"), img_data)
@@ -309,7 +317,7 @@ class ImageGenerationWorker(QThread):
 
                 try:
                     # Use rate-limited generation with API key rotation
-                    thumb_data = image_gen_service.generate_image_with_rate_limit(
+                    thumb_data_url = image_gen_service.generate_image_with_rate_limit(
                         prompt=prompt,
                         api_keys=api_keys,
                         model=model,
@@ -318,26 +326,32 @@ class ImageGenerationWorker(QThread):
                         logger=lambda msg: self.progress.emit(msg)
                     )
 
-                    if thumb_data:
-                        import tempfile
+                    if thumb_data_url:
+                        # Convert to bytes, handling both formats
+                        thumb_data, error = convert_to_bytes(thumb_data_url)
+                        
+                        if thumb_data:
+                            import tempfile
 
-                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                            tmp.write(thumb_data)
-                            tmp_path = tmp.name
+                            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                                tmp.write(thumb_data)
+                                tmp_path = tmp.name
 
-                        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_out:
-                            out_path = tmp_out.name
+                            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_out:
+                                out_path = tmp_out.name
 
-                        sscript.generate_thumbnail_with_text(tmp_path, text_overlay, out_path)
+                            sscript.generate_thumbnail_with_text(tmp_path, text_overlay, out_path)
 
-                        with open(out_path, "rb") as f:
-                            final_thumb = f.read()
+                            with open(out_path, "rb") as f:
+                                final_thumb = f.read()
 
-                        os.unlink(tmp_path)
-                        os.unlink(out_path)
+                            os.unlink(tmp_path)
+                            os.unlink(out_path)
 
-                        self.thumbnail_ready.emit(i, final_thumb)
-                        self.progress.emit(f"Thumbnail {i+1}: ✓")
+                            self.thumbnail_ready.emit(i, final_thumb)
+                            self.progress.emit(f"Thumbnail {i+1}: ✓")
+                        else:
+                            self.progress.emit(f"Thumbnail {i+1}: {error}")
                     else:
                         self.progress.emit(f"Thumbnail {i+1}: Không tạo được")
 
