@@ -316,6 +316,8 @@ QTabWidget::pane {
 }
 
 /* Tab Bar - Bold font with light theme colors */
+/* Note: Tab colors must be set programmatically in Python code
+   QSS does not support nth-child() pseudo-selector */
 QTabBar::tab {
     font-family: "Segoe UI", Arial, sans-serif;
     font-weight: 700;
@@ -327,23 +329,6 @@ QTabBar::tab {
     border-top-right-radius: 8px;
     color: #FFFFFF;
     background: #BDBDBD;
-}
-
-/* Main navigation tabs - Different colors */
-QTabBar::tab:nth-child(1) {
-    background: #1E88E5;  /* Blue - Cài đặt */
-}
-
-QTabBar::tab:nth-child(2) {
-    background: #4CAF50;  /* Green - Image2Video */
-}
-
-QTabBar::tab:nth-child(3) {
-    background: #FF6B2C;  /* Orange - Text2Video */
-}
-
-QTabBar::tab:nth-child(4) {
-    background: #9C27B0;  /* Purple - Video bán hàng */
 }
 
 QTabBar::tab:selected {
