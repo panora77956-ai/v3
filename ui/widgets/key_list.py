@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, QLineEdit, QFileDialog)
-from PyQt5.QtGui import QFont
-from services import key_check_service as kcs
 import datetime
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from services import key_check_service as kcs
 
 FONT_TITLE = QFont(); FONT_TITLE.setPixelSize(14); FONT_TITLE.setBold(True)
 FONT_LABEL = QFont(); FONT_LABEL.setPixelSize(13)
@@ -24,9 +37,9 @@ class _KeyItem(QWidget):
         self.lb_key.setFont(FONT_TEXT)
         self.lb_key.setWordWrap(False)
         # Enable text selection for copying
-        self.lb_key.setTextInteractionFlags(self.lb_key.textInteractionFlags() | 0x00000001)  # Qt.TextSelectableByMouse
+        self.lb_key.setTextInteractionFlags(self.lb_key.textInteractionFlags() | Qt.TextSelectableByMouse)
         self.lb_status=QLabel(''); self.lb_status.setFont(FONT_TEXT)
-        self.btn_test=QPushButton('Kiểm tra tài cả'); self.btn_test.setObjectName('btn_check_kiem')
+        self.btn_test=QPushButton('Kiểm tra tất cả'); self.btn_test.setObjectName('btn_check_kiem')
         self.btn_del=QPushButton('🗑'); self.btn_del.setObjectName('btn_delete_xoa'); self.btn_del.setFixedWidth(32)
         h.addWidget(self.lb_key); h.addStretch(1); h.addWidget(self.btn_test); h.addWidget(self.lb_status); h.addWidget(self.btn_del)
         self.btn_test.clicked.connect(self._on_test)
@@ -45,7 +58,7 @@ class KeyList(QWidget):
         self.listw=QListWidget()
         self.listw.setMinimumHeight(120)
         self.listw.setMaximumHeight(120)
-        self.listw.setHorizontalScrollBarPolicy(1)  # Qt.ScrollBarAlwaysOn
+        self.listw.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         v.addWidget(self.listw)
         row=QHBoxLayout()
         # PR#6: Part E #33 - Add proper label
@@ -56,7 +69,7 @@ class KeyList(QWidget):
         actions=QHBoxLayout()
         # PR#6: Part E #31-33 - Style buttons with orange and teal
         self.btn_import=QPushButton('Nhập từ File (.txt)'); self.btn_import.setObjectName('btn_import_nhap')  # Orange
-        self.btn_test_all=QPushButton('Kiểm tra tài cả'); self.btn_test_all.setObjectName('btn_check_kiem')  # Teal
+        self.btn_test_all=QPushButton('Kiểm tra tất cả'); self.btn_test_all.setObjectName('btn_check_kiem')  # Teal
         self.btn_import.clicked.connect(self._import_txt); self.btn_test_all.clicked.connect(self._test_all)
         actions.addWidget(self.btn_import); actions.addWidget(self.btn_test_all); actions.addStretch(1); v.addLayout(actions)
         self.set_keys(initial)

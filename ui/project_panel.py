@@ -1,25 +1,48 @@
-import os, json, webbrowser, glob, time, shutil, re, datetime
+import datetime
+import glob
+import json
+import os
+import re
+import shutil
+import time
+import webbrowser
+
+from PyQt5.QtCore import QByteArray, QObject, Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QLineEdit,
-    QTableWidget, QTableWidgetItem, QFileDialog, QSpinBox, QComboBox, QProgressBar,
-    QSplitter, QAbstractItemView, QHeaderView, QApplication, QMessageBox, QListWidget, QListWidgetItem
+    QAbstractItemView,
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QByteArray, QTimer
-from PyQt5.QtGui import QPixmap, QIcon, QFont
 
 # Support both package and flat layouts
 try:
-    from utils.logger import Console
     from utils.config import load as load_cfg
+    from utils.logger import Console
 except Exception:  # pragma: no cover
-    from logger import Console
     from config import load as load_cfg
+    from logger import Console
 
 try:
-    from services.google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from services.google.labs_flow_client import DEFAULT_PROJECT_ID, LabsFlowClient
     from services.utils.video_downloader import VideoDownloader
 except Exception:  # pragma: no cover
-    from google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from google.labs_flow_client import DEFAULT_PROJECT_ID, LabsFlowClient
     from utils.video_downloader import VideoDownloader
 
 def safe_name(s: str)->str:
@@ -182,7 +205,7 @@ class DownloadWorker(QObject):
                     if len(j["downloaded_idx"]) >= min(self.expected_copies, len(vids)):
                         j["completed_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     self.log.emit("HTTP", f"Tải OK -> {dest}")
-                except Exception as e:
+                except Exception:
                     self.log.emit("ERR", f"Tải thất bại: {u}")
                     all_success=False
             self.row_update.emit(idx,j); done+=1; self.progress.emit(int(done*100/total), f"Đã tải {ok}/{attempts}")
@@ -491,7 +514,7 @@ class ProjectPanel(QWidget):
         try:
             # PR#5: Refresh tokens only when generation starts (not on tab show)
             self.refresh_tokens()
-            
+
             if not self._ensure_client(): return
             if not self.scenes and self.ed_json.toPlainText().strip():
                 try:
@@ -639,14 +662,14 @@ class ProjectPanel(QWidget):
                     self.client = LabsFlowClient(self.tokens, on_event=None)
         except Exception as e:
             self.console.err(f"[ERROR] Không thể tải tokens: {e}")
-    
+
     def stop_processing(self):
         """PR#4: Stop all workers"""
         if hasattr(self, '_seq_worker') and self._seq_worker:
             # Signal worker to stop (if it supports it)
             self.console.warn("[INFO] Đang dừng xử lý...")
             self._seq_running = False
-        
+
         self.btn_run.setEnabled(True)
         self.btn_stop.setEnabled(False)
 

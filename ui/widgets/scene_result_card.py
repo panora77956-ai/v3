@@ -2,13 +2,21 @@
 """
 SceneResultCard Widget - Compact card with 50% image size
 """
-from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, 
-    QFrame, QTextEdit, QDialog, QApplication, QMessageBox
-)
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QPixmap, QFont
 import json
+
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 
 class SceneResultCard(QFrame):
@@ -19,17 +27,17 @@ class SceneResultCard(QFrame):
     - Title, description, speech text
     - Action buttons: Prompt, Recreate, Generate Video
     """
-    
+
     prompt_requested = pyqtSignal(int)  # scene index
     recreate_requested = pyqtSignal(int)  # scene index
     generate_video_requested = pyqtSignal(int)  # scene index
-    
+
     def __init__(self, scene_index, scene_data, alternating_color=False, parent=None):
         super().__init__(parent)
         self.scene_index = scene_index
         self.scene_data = scene_data
         self.alternating_color = alternating_color
-        
+
         # Set alternating background
         bg_color = "#E3F2FD" if alternating_color else "#FFFFFF"
         self.setStyleSheet(f"""
@@ -40,15 +48,15 @@ class SceneResultCard(QFrame):
                 margin: 4px 0px;
             }}
         """)
-        
+
         self._build_ui()
-    
+
     def _build_ui(self):
         """Build the compact card UI"""
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(12)
-        
+
         # Left: Image preview (160x90px - 50% of original 320x180)
         self.img_preview = QLabel()
         self.img_preview.setFixedSize(160, 90)
@@ -63,17 +71,17 @@ class SceneResultCard(QFrame):
         self.img_preview.setText("Chưa tạo")
         self.img_preview.setFont(QFont("Segoe UI", 9))
         main_layout.addWidget(self.img_preview)
-        
+
         # Right: Content area
         content_layout = QVBoxLayout()
         content_layout.setSpacing(6)
-        
+
         # Title (blue, bold)
         lbl_title = QLabel(f"Cảnh {self.scene_index}")
         lbl_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
         lbl_title.setStyleSheet("color: #1976D2;")
         content_layout.addWidget(lbl_title)
-        
+
         # Description
         desc_text = self.scene_data.get('description', '') or self.scene_data.get('desc', '')
         if desc_text and len(desc_text) > 80:
@@ -83,7 +91,7 @@ class SceneResultCard(QFrame):
         lbl_desc.setFont(QFont("Segoe UI", 10))
         lbl_desc.setStyleSheet("color: #424242;")
         content_layout.addWidget(lbl_desc)
-        
+
         # Speech text (Lời thoại)
         speech_text = self.scene_data.get('speech', '') or self.scene_data.get('voice_over', '')
         if speech_text:
@@ -94,11 +102,11 @@ class SceneResultCard(QFrame):
             lbl_speech.setFont(QFont("Segoe UI", 9))
             lbl_speech.setStyleSheet("color: #757575;")
             content_layout.addWidget(lbl_speech)
-        
+
         # Action buttons
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(6)
-        
+
         btn_style = """
             QPushButton {
                 background: transparent;
@@ -115,46 +123,46 @@ class SceneResultCard(QFrame):
                 color: #1976D2;
             }
         """
-        
+
         btn_prompt = QPushButton("📝 Prompt")
         btn_prompt.setStyleSheet(btn_style)
         btn_prompt.clicked.connect(lambda: self._show_prompt_dialog())
         buttons_layout.addWidget(btn_prompt)
-        
+
         btn_recreate = QPushButton("🔄 Tạo lại")
         btn_recreate.setStyleSheet(btn_style)
         btn_recreate.clicked.connect(lambda: self.recreate_requested.emit(self.scene_index))
         buttons_layout.addWidget(btn_recreate)
-        
+
         btn_video = QPushButton("🎬 Tạo Video")
         btn_video.setStyleSheet(btn_style)
         btn_video.clicked.connect(lambda: self.generate_video_requested.emit(self.scene_index))
         buttons_layout.addWidget(btn_video)
-        
+
         buttons_layout.addStretch()
         content_layout.addLayout(buttons_layout)
         content_layout.addStretch()
-        
+
         main_layout.addLayout(content_layout, 1)
-    
+
     def _show_prompt_dialog(self):
         """Show prompt dialog with JSON format"""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Prompts - Cảnh {self.scene_index}")
         dialog.setMinimumSize(700, 500)
-        
+
         layout = QVBoxLayout(dialog)
-        
+
         # Title
         title = QLabel(f"📝 Prompts cho Cảnh {self.scene_index}")
         title.setFont(QFont("Segoe UI", 14, QFont.Bold))
         layout.addWidget(title)
-        
+
         # Image prompt section
         lbl_img = QLabel("📷 Prompt Ảnh:")
         lbl_img.setFont(QFont("Segoe UI", 11, QFont.Bold))
         layout.addWidget(lbl_img)
-        
+
         ed_img_prompt = QTextEdit()
         ed_img_prompt.setReadOnly(True)
         img_prompt = self.scene_data.get('prompt_image', '')
@@ -170,16 +178,16 @@ class SceneResultCard(QFrame):
         ed_img_prompt.setMaximumHeight(180)
         ed_img_prompt.setFont(QFont("Courier New", 9))
         layout.addWidget(ed_img_prompt)
-        
+
         btn_copy_img = QPushButton("📋 Copy Prompt Ảnh")
         btn_copy_img.clicked.connect(lambda: self._copy_to_clipboard(ed_img_prompt.toPlainText()))
         layout.addWidget(btn_copy_img)
-        
+
         # Video prompt section
         lbl_vid = QLabel("🎬 Prompt Video:")
         lbl_vid.setFont(QFont("Segoe UI", 11, QFont.Bold))
         layout.addWidget(lbl_vid)
-        
+
         ed_vid_prompt = QTextEdit()
         ed_vid_prompt.setReadOnly(True)
         vid_prompt = self.scene_data.get('prompt_video', '')
@@ -195,34 +203,34 @@ class SceneResultCard(QFrame):
         ed_vid_prompt.setMaximumHeight(180)
         ed_vid_prompt.setFont(QFont("Courier New", 9))
         layout.addWidget(ed_vid_prompt)
-        
+
         btn_copy_vid = QPushButton("📋 Copy Prompt Video")
         btn_copy_vid.clicked.connect(lambda: self._copy_to_clipboard(ed_vid_prompt.toPlainText()))
         layout.addWidget(btn_copy_vid)
-        
+
         # Close button
         btn_close = QPushButton("✖ Đóng")
         btn_close.clicked.connect(dialog.close)
         layout.addWidget(btn_close, alignment=Qt.AlignRight)
-        
+
         dialog.exec_()
-    
+
     def _copy_to_clipboard(self, text):
         """Copy text to clipboard"""
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
         QMessageBox.information(self, "Thành công", "Đã copy vào clipboard!")
-    
+
     def set_image(self, image_bytes):
         """Set image from bytes"""
         pixmap = QPixmap()
         pixmap.loadFromData(image_bytes)
         self.img_preview.setPixmap(pixmap.scaled(160, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-    
+
     def set_image_pixmap(self, pixmap):
         """Set image from pixmap"""
         self.img_preview.setPixmap(pixmap.scaled(160, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-    
+
     def set_image_path(self, path):
         """Set image from file path"""
         pixmap = QPixmap(path)

@@ -1,6 +1,14 @@
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QHBoxLayout, QWidget, QTabWidget
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QPushButton,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 
 class PromptViewer(QDialog):
     def __init__(self, prompt_json:str, dialogues=None, parent=None):

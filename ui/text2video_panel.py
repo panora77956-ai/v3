@@ -1,14 +1,31 @@
 
-import os, json
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QComboBox, QSpinBox, QLineEdit,
-    QTableWidget, QTableWidgetItem, QMessageBox, QListWidget, QListWidgetItem
-)
-from PyQt5.QtCore import Qt, QLocale, QThread, pyqtSignal, QObject, QUrl, QSize, QTimer
-from PyQt5.QtGui import QIcon, QPixmap, QColor
+import json
+import os
+
 from PyQt5.Qt import QDesktopServices
+from PyQt5.QtCore import QLocale, QSize, Qt, QThread, QUrl
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 from utils import config as cfg
-from .text2video_panel_impl import _Worker, _ASPECT_MAP, _LANGS, _VIDEO_MODELS, build_prompt_json
+
+from .text2video_panel_impl import _ASPECT_MAP, _LANGS, _VIDEO_MODELS, _Worker, build_prompt_json
+
 
 class Text2VideoPane(QWidget):
     def __init__(self, parent=None):
@@ -24,7 +41,7 @@ class Text2VideoPane(QWidget):
 
         # LEFT (1/3) - PR#4: 6-row redesigned layout
         colL = QVBoxLayout(); colL.setSpacing(8)
-        
+
         # Project name row
         rowp = QHBoxLayout(); rowp.addWidget(QLabel("<b>Tên dự án:</b>"))
         self.ed_project = QLineEdit(); self.ed_project.setPlaceholderText("Nhập tên dự án (để trống sẽ tự tạo)")
@@ -103,23 +120,23 @@ class Text2VideoPane(QWidget):
 
         # RIGHT (2/3) - PR#6: Part B #5 - Implement 3 result tabs
         colR = QVBoxLayout(); colR.setSpacing(8)
-        
+
         # Story/Script section (above tabs)
         colR.addWidget(QLabel("<b>Kịch bản chi tiết (Bible + Outline + Screenplay)</b>"))
         self.view_story = QTextEdit(); self.view_story.setReadOnly(True); self.view_story.setMinimumHeight(150)
         colR.addWidget(self.view_story,0)
-        
+
         # Hidden table (legacy)
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.setHorizontalHeaderLabels(["Cảnh","Prompt (VI)","Prompt (Đích)","Tỉ lệ","Thời lượng (s)","Xem"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setHidden(True); colR.addWidget(self.table, 0)
-        
+
         # PR#6: Part B #5 - Create 3 result tabs
         from PyQt5.QtWidgets import QTabWidget
         self.result_tabs = QTabWidget()
-        
+
         # Tab 1: Kết quả cảnh (Scene results)
         scenes_widget = QWidget()
         scenes_layout = QVBoxLayout(scenes_widget)
@@ -129,7 +146,7 @@ class Text2VideoPane(QWidget):
         self.cards.setIconSize(QSize(240, 135))
         scenes_layout.addWidget(self.cards)
         self.result_tabs.addTab(scenes_widget, "🎬 Kết quả cảnh")
-        
+
         # Tab 2: Thumbnail
         thumbnail_widget = QWidget()
         thumbnail_layout = QVBoxLayout(thumbnail_widget)
@@ -139,7 +156,7 @@ class Text2VideoPane(QWidget):
         self.thumbnail_display.setPlaceholderText("Thumbnail preview sẽ hiển thị ở đây sau khi tạo video")
         thumbnail_layout.addWidget(self.thumbnail_display)
         self.result_tabs.addTab(thumbnail_widget, "📺 Thumbnail")
-        
+
         # Tab 3: Social
         social_widget = QWidget()
         social_layout = QVBoxLayout(social_widget)
@@ -149,9 +166,9 @@ class Text2VideoPane(QWidget):
         self.social_display.setPlaceholderText("Social media content sẽ hiển thị ở đây sau khi tạo kịch bản")
         social_layout.addWidget(self.social_display)
         self.result_tabs.addTab(social_widget, "📱 Social")
-        
+
         colR.addWidget(self.result_tabs, 1)
-        
+
         root.addLayout(colL,1); root.addLayout(colR,2)
 
         # Wire up (PR#4: Updated for new auto button + stop button)
@@ -160,7 +177,7 @@ class Text2VideoPane(QWidget):
         self.table.cellDoubleClicked.connect(self._open_prompt_view)
         self.cards.itemDoubleClicked.connect(self._open_card_prompt)
         self.btn_open_folder.clicked.connect(self._open_project_dir)
-        
+
         # Keep worker reference
         self.worker = None
         self.thread = None
@@ -201,7 +218,7 @@ class Text2VideoPane(QWidget):
         if self.worker:
             self.worker.should_stop = True
             self._append_log("[INFO] Đang dừng xử lý...")
-        
+
         self.btn_auto.setEnabled(True)
         self.btn_stop.setEnabled(False)
 
@@ -211,10 +228,10 @@ class Text2VideoPane(QWidget):
         if not idea:
             QMessageBox.warning(self, "Thiếu thông tin", "Nhập ý tưởng trước.")
             return
-        
+
         self.btn_auto.setEnabled(False)
         self.btn_stop.setEnabled(True)
-        
+
         # Step 1: Generate script
         payload = dict(
             project=self.ed_project.text().strip(),
@@ -280,7 +297,7 @@ class Text2VideoPane(QWidget):
             self.worker.job_card.connect(self._on_job_card)
             self.worker.job_finished.connect(lambda: self._on_worker_finished())
         self.thread.start()
-    
+
     def _on_worker_finished(self):
         """PR#4: Re-enable buttons when worker completes"""
         self._append_log("[INFO] Worker hoàn tất.")
@@ -335,7 +352,7 @@ class Text2VideoPane(QWidget):
                         json.dump(j, f, ensure_ascii=False, indent=2)
             except Exception: pass
         self._append_log("[INFO] Kịch bản đã hiển thị & lưu file.")
-        
+
         # PR#4: If stop button is enabled (auto mode), automatically start video generation
         if not self.btn_stop.isEnabled():
             # Normal mode - re-enable auto button

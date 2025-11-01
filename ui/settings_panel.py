@@ -1,14 +1,24 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
-    QGroupBox, QPushButton, QFileDialog, QWidget as _QW, QRadioButton
-)
+import datetime
+
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
+)
+from PyQt5.QtWidgets import QWidget as _QW
+
+from ui.widgets.key_list import KeyList
 from utils import config as cfg
 from utils.version import get_version
-from ui.widgets.key_list import KeyList
-import datetime
 
 # Typography
 FONT_TITLE = QFont(); FONT_TITLE.setPixelSize(14); FONT_TITLE.setBold(True)     # Section header 14px
@@ -87,12 +97,12 @@ class SettingsPanel(QWidget):
         row_combined = _QW()
         grid_combined = QGridLayout(row_combined)
         grid_combined.setHorizontalSpacing(12)
-        
+
         # Left column: Whisk Session Token
         session_init = self.state.get('session_tokens') or []
         self.w_session = KeyList(title='Whisk Session Token (Cookie)', kind='session', initial=session_init)
         grid_combined.addWidget(self.w_session, 0, 0, 1, 1)
-        
+
         # Right column: Download directory group
         st = QGroupBox('Thư mục tải về'); _decorate_group(st)
         gs = QGridLayout(st); gs.setVerticalSpacing(6)
@@ -109,7 +119,7 @@ class SettingsPanel(QWidget):
         gs.addWidget(_lab('Folder ID (Drive):'), 2, 0); gs.addWidget(self.ed_gdrive, 2, 1)
         gs.addWidget(_lab('OAuth Token:'), 2, 2); gs.addWidget(self.ed_oauth, 2, 3)
         grid_combined.addWidget(st, 0, 1, 1, 1)
-        
+
         root.addWidget(row_combined)
 
         self.rb_local.toggled.connect(self._toggle_storage_fields)
