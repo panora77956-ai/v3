@@ -137,6 +137,7 @@ class ModelRow(QFrame):
             json_data = {"raw": json_text}
 
         return {
+            "id": self.index,
             "image_path": self.image_path,
             "data": json_data
         }
