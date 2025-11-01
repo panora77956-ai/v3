@@ -31,11 +31,13 @@ _VIDEO_MODELS = [
     "veo_3_1_i2v_xl_landscape",
 ]
 
-def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str, ratio_str:str, style:str, seconds:int=8, copies:int=1, resolution_hint:str=None, character_bible=None):
+def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str, ratio_str:str, style:str, seconds:int=8, copies:int=1, resolution_hint:str=None, character_bible=None, enhanced_bible=None):
     """
     Strict prompt JSON schema:
     - objective/persona/constraints/assets/hard_locks/character_details/setting_details/key_action/camera_direction/audio/graphics/negatives/generation
     - bilingual localization (vi + target)
+    
+    Part D: Now supports enhanced_bible (CharacterBible object) for detailed character consistency
     """
     ratio_map = {
         '16:9': ('1920x1080', 'VIDEO_ASPECT_RATIO_LANDSCAPE'),
@@ -73,14 +75,29 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
         "location": "Keep to single coherent environment; no random background swaps."
     }
 
+    # Part D: Enhanced character details with detailed bible
     character_details = "Primary talent remains visually consistent across all scenes."
-    if character_bible and isinstance(character_bible, list) and len(character_bible)>0:
+    if enhanced_bible and hasattr(enhanced_bible, 'characters'):
+        # Use detailed character bible
+        try:
+            from services.google.character_bible import inject_character_consistency
+            # Inject character details into the description
+            desc_with_char = inject_character_consistency(desc_tgt or desc_vi, enhanced_bible)
+            # Extract just the character block for character_details field
+            if '\n\n' in desc_with_char:
+                char_block = desc_with_char.split('\n\n')[0]
+                character_details = char_block
+        except Exception:
+            pass  # Fallback to basic character_details
+    elif character_bible and isinstance(character_bible, list) and len(character_bible)>0:
+        # Use basic character bible
         main = character_bible[0]
         nm = main.get("name",""); role = main.get("role",""); key = main.get("key_trait",""); mot = main.get("motivation","")
         character_details = f"{nm} ({role}) — trait: {key}; motivation: {mot}. Keep appearance and demeanor consistent."
 
     vo_text = (desc_tgt or desc_vi or "").strip()
-    if len(vo_text)>240: vo_text = vo_text[:240] + "…"
+    # Part D: NEVER truncate voiceover - prompt optimizer will handle this
+    # if len(vo_text)>240: vo_text = vo_text[:240] + "…"
 
     data = {
         "scene_id": f"s{scene_index:02d}",
