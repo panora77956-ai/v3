@@ -1512,5 +1512,62 @@ class VideoBanHangPanel(QWidget):
 
         self._append_log("[INFO] Đã dừng xử lý")
 
+    def _change_download_path(self):
+        """Change download folder via file dialog"""
+        current_path = self.ed_download_path.text()
+        
+        new_path = QFileDialog.getExistingDirectory(
+            self,
+            "Chọn thư mục lưu video",
+            current_path,
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+        )
+        
+        if new_path:
+            self.ed_download_path.setText(new_path)
+            self._append_log(f"✓ Đổi thư mục tải: {new_path}")
+
+    def _auto_download_video(self, source_path):
+        """Copy video to download folder and open folder"""
+        try:
+            download_dir = Path(self.ed_download_path.text())
+            download_dir.mkdir(parents=True, exist_ok=True)
+            
+            source = Path(source_path)
+            destination = download_dir / source.name
+            
+            # Copy file
+            shutil.copy2(source, destination)
+            
+            self._append_log(f"✓ Đã tải về: {destination}")
+            
+            # Show notification
+            reply = QMessageBox.question(
+                self,
+                "Tải thành công",
+                f"Video đã được tải về:\n{destination}\n\nMở thư mục?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                self._open_folder(download_dir)
+                
+        except Exception as e:
+            self._append_log(f"✗ Lỗi tải video: {e}")
+            QMessageBox.warning(self, "Lỗi", f"Không thể tải video:\n{e}")
+
+    def _open_folder(self, folder_path):
+        """Open folder in file explorer"""
+        try:
+            if platform.system() == 'Windows':
+                subprocess.Popen(f'explorer "{folder_path}"')
+            elif platform.system() == 'Darwin':
+                subprocess.Popen(['open', folder_path])
+            else:
+                subprocess.Popen(['xdg-open', folder_path])
+        except Exception as e:
+            self._append_log(f"⚠ Không thể mở thư mục: {e}")
+
 
 # FIXED: Removed QSS autoload block (lines 1000-1034) to prevent theme conflicts
