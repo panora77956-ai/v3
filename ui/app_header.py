@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
+
 
 class AppHeader(QWidget):
     def __init__(self,_provider, parent=None):

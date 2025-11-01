@@ -1,25 +1,48 @@
-import os, json, webbrowser, glob, time, shutil, re, datetime
+import datetime
+import glob
+import json
+import os
+import re
+import shutil
+import time
+import webbrowser
+
+from PyQt5.QtCore import QByteArray, QObject, Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QLineEdit,
-    QTableWidget, QTableWidgetItem, QFileDialog, QSpinBox, QComboBox, QProgressBar,
-    QSplitter, QAbstractItemView, QHeaderView, QApplication, QMessageBox, QListWidget, QListWidgetItem
+    QAbstractItemView,
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QByteArray, QTimer
-from PyQt5.QtGui import QPixmap, QIcon, QFont
 
 # Support both package and flat layouts
 try:
-    from utils.logger import Console
     from utils.config import load as load_cfg
+    from utils.logger import Console
 except Exception:  # pragma: no cover
-    from logger import Console
     from config import load as load_cfg
+    from logger import Console
 
 try:
-    from services.google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from services.google.labs_flow_client import DEFAULT_PROJECT_ID, LabsFlowClient
     from services.utils.video_downloader import VideoDownloader
 except Exception:  # pragma: no cover
-    from google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+    from google.labs_flow_client import DEFAULT_PROJECT_ID, LabsFlowClient
     from utils.video_downloader import VideoDownloader
 
 def safe_name(s: str)->str:
@@ -182,7 +205,7 @@ class DownloadWorker(QObject):
                     if len(j["downloaded_idx"]) >= min(self.expected_copies, len(vids)):
                         j["completed_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     self.log.emit("HTTP", f"Tải OK -> {dest}")
-                except Exception as e:
+                except Exception:
                     self.log.emit("ERR", f"Tải thất bại: {u}")
                     all_success=False
             self.row_update.emit(idx,j); done+=1; self.progress.emit(int(done*100/total), f"Đã tải {ok}/{attempts}")
@@ -211,14 +234,21 @@ class ProjectPanel(QWidget):
         # LEFT (1/4)
         left=QWidget(); lv=QVBoxLayout(left); lv.setSpacing(6)
 
-        # Nhóm: Dự án
-        lv.addWidget(QLabel("Dự án"))
+        # Nhóm: Dự án (PR#6: Part D #19, #21-23)
+        lv.addWidget(QLabel("<b>Dự án</b>"))
         rowm=QHBoxLayout()
         self.ed_name=QLineEdit(self.project_name); self.ed_name.setReadOnly(True)
-        self.btn_del_scene=QPushButton("Xóa cảnh đã chọn"); self.btn_del_scene.setObjectName('btn_delete_xoa'); self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
-        self.btn_del_all=QPushButton("Xóa tất cả cảnh"); self.btn_del_all.setObjectName('btn_delete_xoa_all'); self.btn_del_all.clicked.connect(self._delete_all_scenes)
         rowm.addWidget(self.ed_name,1); lv.addLayout(rowm)
-        rowx=QHBoxLayout(); rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
+        rowx=QHBoxLayout()
+        self.btn_del_scene=QPushButton("🗑️ Xóa cảnh đã chọn")
+        self.btn_del_scene.setObjectName('btn_danger')  # Red color
+        self.btn_del_scene.setMinimumHeight(32)
+        self.btn_del_scene.clicked.connect(self._delete_selected_scenes)
+        self.btn_del_all=QPushButton("🗑️ Xóa tất cả cảnh")
+        self.btn_del_all.setObjectName('btn_danger')  # Red color
+        self.btn_del_all.setMinimumHeight(32)
+        self.btn_del_all.clicked.connect(self._delete_all_scenes)
+        rowx.addWidget(self.btn_del_scene); rowx.addWidget(self.btn_del_all); lv.addLayout(rowx)
 
         # Model/Aspect/Copies
         lv.addWidget(QLabel("Model / Tỉ lệ / Số video"))
@@ -244,25 +274,40 @@ class ProjectPanel(QWidget):
         rowcfg.addWidget(self.sp_copies,0)
         lv.addLayout(rowcfg)
 
-        # Prompt: nhập hoặc nạp file
+        # Prompt: nhập hoặc nạp file (PR#6: Part D #19)
         lv.addWidget(QLabel("Prompt (nhập hoặc hiển thị từ file)"))
         self.ed_json=QTextEdit(); self.ed_json.setMinimumHeight(120); lv.addWidget(self.ed_json)
-        rowp=QHBoxLayout(); btn_prompt=QPushButton("Chọn file prompt"); btn_prompt.setObjectName('btn_import_nhap'); btn_prompt.clicked.connect(self._pick_prompt_file); rowp.addWidget(btn_prompt); lv.addLayout(rowp)
+        rowp=QHBoxLayout()
+        btn_prompt=QPushButton("📄 Chọn file prompt")
+        btn_prompt.setObjectName('btn_import')  # Orange color
+        btn_prompt.setMinimumHeight(32)
+        btn_prompt.clicked.connect(self._pick_prompt_file)
+        rowp.addWidget(btn_prompt)
+        lv.addLayout(rowp)
 
-        # Ảnh: chọn thư mục hoặc chọn từng ảnh
+        # Ảnh: chọn thư mục hoặc chọn từng ảnh (PR#6: Part D #19)
         lv.addWidget(QLabel("Ảnh tham chiếu"))
         rowi=QHBoxLayout()
-        btn_img_dir=QPushButton("Chọn thư mục ảnh"); btn_img_dir.setObjectName('btn_import_nhap_dir'); btn_img_dir.clicked.connect(self._pick_image_dir); rowi.addWidget(btn_img_dir)
-        btn_imgs=QPushButton("Chọn ảnh lẻ"); btn_imgs.setObjectName('btn_import_nhap_imgs'); btn_imgs.clicked.connect(self._pick_images_multi); rowi.addWidget(btn_imgs)
+        btn_img_dir=QPushButton("📁 Chọn thư mục ảnh")
+        btn_img_dir.setObjectName('btn_import')  # Orange color
+        btn_img_dir.setMinimumHeight(32)
+        btn_img_dir.clicked.connect(self._pick_image_dir)
+        rowi.addWidget(btn_img_dir)
+        btn_imgs=QPushButton("🖼️ Chọn ảnh lẻ")
+        btn_imgs.setObjectName('btn_import')  # Orange color
+        btn_imgs.setMinimumHeight(32)
+        btn_imgs.clicked.connect(self._pick_images_multi)
+        rowi.addWidget(btn_imgs)
         lv.addLayout(rowi)
 
-        # Nút lớn bắt đầu (PR#4: Add stop button)
+        # Nút lớn bắt đầu (PR#6: Part D #19, #21-23)
         hb_run = QHBoxLayout()
-        self.btn_run=QPushButton("BẮT ĐẦU TẠO VIDEO"); self.btn_run.setMinimumHeight(46)
-        self.btn_run.setObjectName('btn_run_primary')
+        self.btn_run=QPushButton("▶ BẮT ĐẦU TẠO VIDEO")
+        self.btn_run.setMinimumHeight(46)
+        self.btn_run.setObjectName('btn_success')  # Green color
         self.btn_run.clicked.connect(self._run_seq)
         self.btn_stop = QPushButton("⏹ Dừng")
-        self.btn_stop.setObjectName("btn_danger")
+        self.btn_stop.setObjectName("btn_gray")  # Gray color
         self.btn_stop.setMaximumWidth(80)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_processing)
@@ -270,9 +315,9 @@ class ProjectPanel(QWidget):
         hb_run.addWidget(self.btn_stop)
         lv.addLayout(hb_run)
 
-        self.btn_run_all=QPushButton("CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
+        self.btn_run_all=QPushButton("⚡ CHẠY TOÀN BỘ CÁC DỰ ÁN (THEO THỨ TỰ)")
         self.btn_run_all.setMinimumHeight(46)
-        self.btn_run_all.setObjectName('btn_success_run_all')
+        self.btn_run_all.setObjectName('btn_warning')  # Orange color
         self.btn_run_all.clicked.connect(lambda: self.run_all_requested.emit())
         lv.addWidget(self.btn_run_all)
 
@@ -469,7 +514,7 @@ class ProjectPanel(QWidget):
         try:
             # PR#5: Refresh tokens only when generation starts (not on tab show)
             self.refresh_tokens()
-            
+
             if not self._ensure_client(): return
             if not self.scenes and self.ed_json.toPlainText().strip():
                 try:
@@ -617,14 +662,14 @@ class ProjectPanel(QWidget):
                     self.client = LabsFlowClient(self.tokens, on_event=None)
         except Exception as e:
             self.console.err(f"[ERROR] Không thể tải tokens: {e}")
-    
+
     def stop_processing(self):
         """PR#4: Stop all workers"""
         if hasattr(self, '_seq_worker') and self._seq_worker:
             # Signal worker to stop (if it supports it)
             self.console.warn("[INFO] Đang dừng xử lý...")
             self._seq_running = False
-        
+
         self.btn_run.setEnabled(True)
         self.btn_stop.setEnabled(False)
 

@@ -1,15 +1,14 @@
 
-import os, json, shutil, subprocess, datetime, random, random
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QComboBox, QSpinBox, QLineEdit,
-    QTableWidget, QTableWidgetItem, QMessageBox, QListWidget, QListWidgetItem
-)
-from PyQt5.QtCore import Qt, QLocale, QThread, pyqtSignal, QObject, QUrl
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.Qt import QDesktopServices
-from utils import config as cfg
-from services.google.labs_flow_client import LabsFlowClient, DEFAULT_PROJECT_ID
+import json
+import os
+import shutil
+import subprocess
+
+from PyQt5.QtCore import QObject, pyqtSignal
+
+from services.google.labs_flow_client import DEFAULT_PROJECT_ID, LabsFlowClient
 from services.utils.video_downloader import VideoDownloader
+from utils import config as cfg
 
 # Backward compatibility
 LabsClient = LabsFlowClient
@@ -225,18 +224,18 @@ class _Worker(QObject):
         for scene_idx, scene in enumerate(p["scenes"], start=1):
             ratio = scene["aspect"]
             model_key = p.get("model_key","")
-            
+
             # Single API call with copies parameter (instead of N calls)
             body = {"prompt": scene["prompt"], "copies": copies, "model": model_key, "aspect_ratio": ratio}
             self.log.emit(f"[INFO] Start scene {scene_idx} with {copies} copies in one batch…")
             rc = client.start_one(body, model_key, ratio, scene["prompt"], copies=copies, project_id=project_id)
-            
+
             if rc > 0:
                 # Create cards for each expected copy
                 for copy_idx in range(1, copies+1):
                     card={"scene":scene_idx,"copy":copy_idx,"status":"PROCESSING","json":scene["prompt"],"url":"","path":"","thumb":"","dir":dir_videos}
                     self.job_card.emit(card)
-                    
+
                     # Store card data separately to avoid unhashable dict issues
                     job_info = {
                         'card': card,
@@ -257,7 +256,7 @@ class _Worker(QObject):
             if self.should_stop:
                 self.log.emit("[INFO] Đã dừng xử lý theo yêu cầu người dùng.")
                 break
-                
+
             if not jobs:
                 break
             # Extract all operation names from all jobs
@@ -275,7 +274,7 @@ class _Worker(QObject):
                 if not op_names:
                     new_jobs.append(job_info)  # Append job_info, not tuple
                     continue
-                
+
                 # Check status of first operation (for single copy jobs, there's only one)
                 op_name = op_names[0]
                 v = rs.get(op_name) or {}
