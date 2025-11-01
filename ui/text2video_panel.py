@@ -160,6 +160,7 @@ class Text2VideoPane(QWidget):
         # Character Bible text display
         self.view_bible = QTextEdit()
         self.view_bible.setReadOnly(False)  # Allow editing
+        self.view_bible.setAcceptRichText(False)  # Plain text only for consistency
         self.view_bible.setPlaceholderText("Character Bible sẽ hiển thị ở đây sau khi tạo...\n\nCharacter Bible đảm bảo nhân vật có cùng diện mạo và đặc điểm trong tất cả các cảnh.")
         self.view_bible.setMaximumHeight(200)
         bible_layout.addWidget(self.view_bible)

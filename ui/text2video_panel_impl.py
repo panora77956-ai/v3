@@ -87,7 +87,10 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
             if '\n\n' in desc_with_char:
                 char_block = desc_with_char.split('\n\n')[0]
                 character_details = char_block
-        except Exception:
+        except Exception as e:
+            # Log the error for debugging but continue with fallback
+            import sys
+            print(f"[WARN] Character bible injection failed: {e}", file=sys.stderr)
             pass  # Fallback to basic character_details
     elif character_bible and isinstance(character_bible, list) and len(character_bible)>0:
         # Use basic character bible

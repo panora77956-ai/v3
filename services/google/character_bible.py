@@ -47,8 +47,11 @@ class CharacterBible:
     @classmethod
     def from_json(cls, json_str: str) -> 'CharacterBible':
         """Create from JSON string"""
-        data = json.loads(json_str)
-        return cls.from_dict(data)
+        try:
+            data = json.loads(json_str)
+            return cls.from_dict(data)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {e}")
 
 
 def create_character_bible(video_concept: str, script: str, 
@@ -160,7 +163,8 @@ def _extract_characters_from_script(script: str, concept: str) -> List[Dict[str,
     characters = []
     
     # Simple extraction: Look for dialogue patterns (CHARACTER: dialogue)
-    dialogue_pattern = r'^([A-Z][A-Z\s]+):\s*(.+)$'
+    # More flexible pattern to catch names like "Dr. Smith", "Mary-Jane", etc.
+    dialogue_pattern = r'^([A-Z][a-zA-Z\s\-\.]+):\s*(.+)$'
     names = set()
     
     for line in script.split('\n'):
@@ -519,7 +523,9 @@ def _extract_marks(visual_identity: str) -> str:
 
 def _extract_color_near_word(text: str, word: str) -> Optional[str]:
     """Extract color mentioned near a specific word"""
-    colors = ["red", "blue", "green", "yellow", "white", "black", "gray", "purple", "orange", "pink", "brown"]
+    colors = ["red", "blue", "green", "yellow", "white", "black", "gray", "grey", "purple", 
+              "orange", "pink", "brown", "violet", "cyan", "magenta", "navy", "maroon", 
+              "beige", "tan", "gold", "silver", "crimson", "indigo", "teal"]
     text_lower = text.lower()
     
     # Find position of word

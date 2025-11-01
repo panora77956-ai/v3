@@ -79,8 +79,8 @@ class PromptOptimizer:
         """Extract voiceover text from prompt"""
         # Try to find voiceover in common patterns
         patterns = [
-            r'voiceover["\s:]+([^"]+)"',
-            r'"voiceover":\s*{[^}]*"text":\s*"([^"]+)"',
+            r'voiceover["\s:]+([^"]+)"',  # Fixed: proper escaping
+            r'"voiceover":\s*\{[^}]*"text":\s*"([^"]+)"',  # Fixed: escaped braces
             r'VOICEOVER:\s*([^\n]+)',
             r'Voice[Oo]ver:\s*([^\n]+)',
         ]
@@ -146,7 +146,8 @@ class PromptOptimizer:
     def _optimize_preserving_visual(self, full_prompt: str, voiceover_text: str) -> str:
         """
         Optimize prompt while preserving visual details.
-        May compress voiceover slightly if absolutely necessary (rare case).
+        NOTE: Even in visual priority mode, voiceover should be preserved as much as possible.
+        Only in extreme cases (prompt >> max_tokens) will voiceover be slightly compressed.
         """
         # Parse sections
         sections = self._parse_prompt_sections(full_prompt)
@@ -171,14 +172,26 @@ class PromptOptimizer:
             )
             remaining_tokens -= self.estimate_tokens(optimized_sections['character'])
         
-        # 3. Voiceover - lowest priority (but still try to preserve most)
+        # 3. Voiceover - try to preserve completely even in visual mode
         if voiceover_text:
-            vo_tokens = min(remaining_tokens * 0.7, self.estimate_tokens(voiceover_text))
-            if self.estimate_tokens(voiceover_text) > vo_tokens:
-                # Need to compress voiceover (rare)
-                optimized_sections['voiceover'] = voiceover_text[:int(vo_tokens * CHARS_PER_TOKEN_AVG)]
-            else:
+            vo_tokens = self.estimate_tokens(voiceover_text)
+            if vo_tokens <= remaining_tokens:
+                # Can fit voiceover completely
                 optimized_sections['voiceover'] = voiceover_text
+            else:
+                # In extreme case, preserve as much as possible by splitting at sentence boundary
+                # This should rarely happen
+                sentences = voiceover_text.split('.')
+                preserved = []
+                current_tokens = 0
+                for sent in sentences:
+                    sent_tokens = self.estimate_tokens(sent)
+                    if current_tokens + sent_tokens <= remaining_tokens * 0.9:  # Use 90% of remaining
+                        preserved.append(sent)
+                        current_tokens += sent_tokens
+                    else:
+                        break
+                optimized_sections['voiceover'] = '. '.join(preserved) + ('.' if preserved else '')
         
         return self._reconstruct_prompt(optimized_sections)
     
@@ -321,12 +334,20 @@ class PromptOptimizer:
         if self.estimate_tokens(text) <= target_tokens:
             return text
         
-        # Simple truncation with ellipsis
+        # Compress by word boundaries to avoid mid-word cuts
+        words = text.split()
         char_limit = int(target_tokens * CHARS_PER_TOKEN_AVG)
-        if len(text) > char_limit:
-            return text[:char_limit - 3] + "..."
         
-        return text
+        result = []
+        current_length = 0
+        for word in words:
+            if current_length + len(word) + 1 <= char_limit - 3:  # Reserve 3 chars for "..."
+                result.append(word)
+                current_length += len(word) + 1
+            else:
+                break
+        
+        return ' '.join(result) + "..." if result else text[:char_limit - 3] + "..."
     
     def _create_minimal_prompt_with_voiceover(self, voiceover_text: str) -> str:
         """Create minimal prompt when space is very limited"""
