@@ -2,6 +2,8 @@
 """
 Image Worker - Non-blocking image generation using QThread
 """
+import base64
+import re
 import time
 
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -55,13 +57,27 @@ class ImageWorker(QThread):
                 # Generate image based on model using rate-limited function
                 if self.model == "gemini":
                     from services.image_gen_service import generate_image_with_rate_limit
-                    img_bytes = generate_image_with_rate_limit(
+                    img_result = generate_image_with_rate_limit(
                         prompt=prompt,
                         api_keys=api_keys,
                         model="gemini",
                         aspect_ratio=aspect_ratio,
-                        logger=lambda msg: self.progress.emit(scene_idx, msg)
+                        logger=lambda msg, is_error=False: self.progress.emit(scene_idx, msg)
                     )
+                    
+                    # Handle both bytes and data URL string formats
+                    img_bytes = None
+                    if img_result:
+                        if isinstance(img_result, bytes):
+                            # Already bytes, use directly
+                            img_bytes = img_result
+                        elif isinstance(img_result, str):
+                            # Data URL string, convert to bytes
+                            match = re.search(r'base64,(.+)', img_result)
+                            if match:
+                                img_bytes = base64.b64decode(match.group(1))
+                            else:
+                                self.error.emit(scene_idx, "Invalid data URL format")
                 else:
                     from services.whisk_service import generate_image
                     img_bytes = generate_image(prompt)
