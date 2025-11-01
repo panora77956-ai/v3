@@ -346,9 +346,9 @@ class VideoBanHangPanel(QWidget):
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
 
-        # LEFT COLUMN - EXACTLY 400px
+        # LEFT COLUMN - EXACTLY 480px (was 400px, +80px for better spacing)
         self.left_widget = QWidget()
-        self.left_widget.setFixedWidth(400)
+        self.left_widget.setFixedWidth(480)
         left_layout = QVBoxLayout(self.left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(6)
@@ -406,9 +406,40 @@ class VideoBanHangPanel(QWidget):
         gb_proj.setMinimumHeight(280)
         layout.addWidget(gb_proj)
 
-        # Model selector widget (0-5 models with image + JSON) (PR#5: Add icon)
-        self.model_selector = ModelSelectorWidget("👤 Thông tin người mẫu")
-        layout.addWidget(self.model_selector)
+        # Model selector widget with toggle (PR#17: Hidden by default)
+        group_models = QGroupBox("👤 Thông tin người mẫu")
+        group_models_layout = QVBoxLayout()
+
+        # Button to show/hide model selector
+        self.btn_toggle_models = QPushButton("➕ Thêm người mẫu")
+        self.btn_toggle_models.setMinimumHeight(32)
+        self.btn_toggle_models.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover { background-color: #388E3C; }
+        """)
+        self.btn_toggle_models.clicked.connect(self._toggle_model_selector)
+
+        # ModelSelectorWidget container (hidden by default)
+        self.model_selector_container = QWidget()
+        self.model_selector_container.setVisible(False)  # HIDDEN BY DEFAULT
+        model_container_layout = QVBoxLayout(self.model_selector_container)
+        model_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # ModelSelectorWidget inside container
+        self.model_selector = ModelSelectorWidget()
+        model_container_layout.addWidget(self.model_selector)
+
+        # Add to GroupBox
+        group_models_layout.addWidget(self.btn_toggle_models)
+        group_models_layout.addWidget(self.model_selector_container)
+        group_models.setLayout(group_models_layout)
+
+        layout.addWidget(group_models)
 
         # Product images (PR#5: Add icon)
         gb_prod = self._create_group("📦 Ảnh sản phẩm")
@@ -789,7 +820,36 @@ class VideoBanHangPanel(QWidget):
         n = max(1, math.ceil(self.sp_duration.value() / 8.0))
         self.lb_scenes.setText(f"Số cảnh: {n}")
 
-
+    def _toggle_model_selector(self):
+        """Toggle model selector visibility (PR#17)"""
+        is_visible = self.model_selector_container.isVisible()
+        self.model_selector_container.setVisible(not is_visible)
+        
+        # Update button text and style
+        if is_visible:
+            # Hiding - show green "Add" button
+            self.btn_toggle_models.setText("➕ Thêm người mẫu")
+            self.btn_toggle_models.setStyleSheet("""
+                QPushButton {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover { background-color: #388E3C; }
+            """)
+        else:
+            # Showing - change to orange "Hide" button
+            self.btn_toggle_models.setText("➖ Ẩn người mẫu")
+            self.btn_toggle_models.setStyleSheet("""
+                QPushButton {
+                    background-color: #FF9800;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover { background-color: #F57C00; }
+            """)
 
     def _pick_product_images(self):
         """Pick product images"""

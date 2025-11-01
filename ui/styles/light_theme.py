@@ -31,18 +31,18 @@ COLORS = {
 
 # Unified Light Theme Stylesheet with Segoe UI
 LIGHT_STYLESHEET = """
-/* Global - Light theme with Segoe UI, 13px base */
+/* Global - Light theme with Segoe UI, 14px base (was 13px, +1px for readability) */
 QWidget {
     font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
     background-color: #F5F5F5;
 }
 
-/* Labels - 13px normal weight */
+/* Labels - 14px normal weight (was 13px) */
 QLabel {
     color: #212121;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: normal;
     background: transparent;
 }
@@ -56,7 +56,7 @@ QPushButton {
     padding: 8px 16px;
     min-height: 32px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     font-family: "Segoe UI", Arial, sans-serif;
 }
 
@@ -193,7 +193,7 @@ QLineEdit, QTextEdit, QPlainTextEdit {
     border-radius: 4px;
     padding: 12px;
     color: #212121;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
@@ -213,7 +213,7 @@ QComboBox {
     border-radius: 4px;
     padding: 10px;
     min-width: 100px;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -232,7 +232,7 @@ QComboBox QAbstractItemView {
     selection-background-color: #1E88E5;
     selection-color: #FFFFFF;
     color: #212121;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 /* Spin Box - Light theme */
@@ -241,7 +241,7 @@ QSpinBox {
     border: 1px solid #E0E0E0;
     border-radius: 4px;
     padding: 10px;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -281,7 +281,7 @@ QTableWidget {
     border: 1px solid #E0E0E0;
     border-radius: 8px;
     gridline-color: #EEEEEE;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -319,7 +319,7 @@ QTabWidget::pane {
 QTabBar::tab {
     font-family: "Segoe UI", Arial, sans-serif;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     min-width: 150px;
     padding: 12px 24px;
     margin-right: 2px;
@@ -425,7 +425,7 @@ QProgressBar {
     border-radius: 4px;
     text-align: center;
     background: #F5F5F5;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -437,7 +437,7 @@ QProgressBar::chunk {
 /* Checkbox - Light theme */
 QCheckBox {
     spacing: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -461,7 +461,7 @@ QCheckBox::indicator:hover {
 /* Radio Button - Light theme */
 QRadioButton {
     spacing: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
@@ -488,7 +488,7 @@ QToolButton {
     border: none;
     padding: 8px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 14px;
     color: #212121;
 }
 
