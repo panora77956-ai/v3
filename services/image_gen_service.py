@@ -102,7 +102,12 @@ def generate_image_with_rate_limit(
     api_keys: Optional[List[str]] = None,
     model: str = "gemini",
     aspect_ratio: str = "1:1",
-    log_callback=None
+    log_callback=None,
+    # Backwards compatibility parameters (ignored)
+    delay_before: float = 0.0,
+    size: str = "1024x1024",
+    rate_limit_delay: float = 10.0,
+    max_calls_per_minute: int = 6,
 ) -> Optional[bytes]:
     """
     Generate image with intelligent API key rotation and rate limiting
@@ -120,6 +125,12 @@ def generate_image_with_rate_limit(
         model: Model to use - 'gemini' for Gemini Flash Image or 'imagen_4' for Imagen 4
         aspect_ratio: Image aspect ratio from UI (e.g., "9:16", "16:9", "1:1", "4:5")
         log_callback: Optional callback function for logging
+        
+        # Legacy parameters (kept for backwards compatibility, ignored):
+        delay_before: Ignored - rotation manager handles delays
+        size: Ignored - use aspect_ratio instead
+        rate_limit_delay: Ignored - rotation manager handles delays
+        max_calls_per_minute: Ignored - rotation manager handles rate limits
     
     Returns:
         Generated image bytes or None if generation fails
@@ -127,6 +138,7 @@ def generate_image_with_rate_limit(
     Note:
         - For Imagen 4: Automatically normalizes 4:5 to 3:4 (closest supported ratio)
         - For Gemini: Accepts any aspect ratio from UI
+        - Legacy parameters (delay_before, size, etc.) are ignored - use new rotation manager
     """
     def log(msg):
         if log_callback:

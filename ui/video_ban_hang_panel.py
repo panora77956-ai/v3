@@ -251,10 +251,13 @@ class ImageGenerationWorker(QThread):
                     try:
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
 
-                        # No additional delay needed - we already waited above
+                        # Get aspect ratio from config
+                        aspect_ratio = self.cfg.get("ratio", "1:1")
+
+                        # Use new intelligent rotation with aspect ratio
                         img_data = image_gen_service.generate_image_with_rate_limit(
                             prompt,
-                            delay_before=0,  # Explicitly no extra delay
+                            aspect_ratio=aspect_ratio,  # Pass aspect ratio from UI
                             log_callback=lambda msg: self.progress.emit(msg),
                         )
 
@@ -289,9 +292,14 @@ class ImageGenerationWorker(QThread):
                 text_overlay = version.get("thumbnail_text_overlay", "")
 
                 try:
-                    # No additional delay - we already waited above
+                    # Get aspect ratio from config
+                    aspect_ratio = self.cfg.get("ratio", "1:1")
+                    
+                    # Use new intelligent rotation with aspect ratio
                     thumb_data = image_gen_service.generate_image_with_rate_limit(
-                        prompt, delay_before=0, log_callback=lambda msg: self.progress.emit(msg)
+                        prompt,
+                        aspect_ratio=aspect_ratio,  # Pass aspect ratio from UI
+                        log_callback=lambda msg: self.progress.emit(msg)
                     )
 
                     if thumb_data:
