@@ -276,7 +276,7 @@ class ImageGenerationWorker(QThread):
                             model=model,
                             aspect_ratio=aspect_ratio,
                             delay_before=0,  # Explicitly no extra delay
-                            logger=lambda msg, is_error=False: self.progress.emit(msg),
+                            logger=lambda msg: self.progress.emit(msg),
                         )
 
                         if img_data_url:
@@ -335,7 +335,7 @@ class ImageGenerationWorker(QThread):
                         model=model,
                         aspect_ratio=aspect_ratio,
                         delay_before=0,
-                        logger=lambda msg, is_error=False: self.progress.emit(msg)
+                        logger=lambda msg: self.progress.emit(msg)
                     )
 
                     if thumb_data_url:

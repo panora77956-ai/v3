@@ -62,7 +62,7 @@ class ImageWorker(QThread):
                         api_keys=api_keys,
                         model="gemini",
                         aspect_ratio=aspect_ratio,
-                        logger=lambda msg, is_error=False: self.progress.emit(scene_idx, msg)
+                        logger=lambda msg: self.progress.emit(scene_idx, msg)
                     )
                     
                     # Handle both bytes and data URL string formats
