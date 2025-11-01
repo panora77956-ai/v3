@@ -586,7 +586,7 @@ class VideoBanHangPanel(QWidget):
 
     def _build_action_buttons(self, layout):
         """Build action buttons at bottom of left column"""
-        
+
         # === ROW 1: Workflow Buttons (Viết/Tạo/Video) - Horizontal ===
         workflow_row = QHBoxLayout()
         workflow_row.setSpacing(6)
