@@ -308,10 +308,19 @@ class _Worker(QObject):
                 # Get the first operation name for this job
                 op_names = job_dict.get("operation_names", [])
                 if not op_names:
-                    # No operation name - skip this job
-                    sc = card['scene']
-                    cp = card['copy']
-                    self.log.emit(f"[WARN] Cảnh {sc} video {cp}: không có operation name")
+                    # No operation name - keep in queue for one more iteration in case it appears
+                    # Initialize skip counter if not present
+                    if 'no_op_count' not in job_info:
+                        job_info['no_op_count'] = 0
+                    job_info['no_op_count'] += 1
+                    
+                    # Only skip after multiple attempts
+                    if job_info['no_op_count'] > 3:
+                        sc = card['scene']
+                        cp = card['copy']
+                        self.log.emit(f"[WARN] Cảnh {sc} video {cp}: không có operation name sau 3 lần thử")
+                    else:
+                        new_jobs.append(job_info)
                     continue
 
                 # Check status of first operation (for single copy jobs, there's only one)
@@ -364,7 +373,10 @@ class _Worker(QObject):
                         card['status']='DONE_NO_URL'
                         self.job_card.emit(card)
                 elif stt == 'FAILED':
-                    # Failed - check if we should retry
+                    # Failed - check if we should retry by re-polling status
+                    # Note: For async operations, re-checking status is appropriate as
+                    # the backend may retry internally. We don't regenerate here to avoid
+                    # duplicate API calls and respect backend retry logic.
                     retries = retry_count.get(op_name, 0)
                     if retries < max_retries:
                         retry_count[op_name] = retries + 1

@@ -261,6 +261,13 @@ class VeoDownloader:
             # Verify download
             if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
                 self.log("[Veo] Download verification failed - file empty or missing")
+                # Clean up empty or corrupted file
+                if os.path.exists(output_path):
+                    try:
+                        os.remove(output_path)
+                        self.log("[Veo] Removed corrupted file")
+                    except OSError:
+                        pass
                 return False
 
             self.log(f"[Veo] Download complete: {output_path}")
@@ -268,6 +275,13 @@ class VeoDownloader:
 
         except Exception as e:
             self.log(f"[Veo] Download error: {e}")
+            # Clean up partial download on error
+            if os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                    self.log("[Veo] Removed partial download")
+                except OSError:
+                    pass
             return False
 
     def poll_and_download(
