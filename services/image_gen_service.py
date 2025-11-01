@@ -11,6 +11,39 @@ class ImageGenError(Exception):
     pass
 
 
+def _extract_image_from_response(data: dict) -> bytes:
+    """
+    Extract image bytes from Gemini API response
+    
+    Args:
+        data: JSON response from Gemini API
+        
+    Returns:
+        Image as bytes
+        
+    Raises:
+        ImageGenError: If image data cannot be extracted
+    """
+    candidates = data.get("candidates", [])
+    if not candidates:
+        raise ImageGenError("No candidates in response")
+    
+    parts = candidates[0].get("content", {}).get("parts", [])
+    if not parts:
+        raise ImageGenError("No parts in candidate")
+    
+    # Look for inline_data with image
+    for part in parts:
+        if "inline_data" in part:
+            mime_type = part["inline_data"].get("mime_type", "")
+            if mime_type.startswith("image/"):
+                b64_data = part["inline_data"].get("data", "")
+                if b64_data:
+                    return base64.b64decode(b64_data)
+    
+    raise ImageGenError("No image data found in response")
+
+
 def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float = 15.0, enforce_rate_limit: bool = True, log_callback=None) -> bytes:
     """
     Generate image using Gemini Flash Image model with APIKeyRotator (PR#5)
@@ -68,25 +101,8 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
         
         data = response.json()
         
-        # Extract image data
-        candidates = data.get("candidates", [])
-        if not candidates:
-            raise ImageGenError("No candidates in response")
-        
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            raise ImageGenError("No parts in candidate")
-        
-        # Look for inline_data with image
-        for part in parts:
-            if "inline_data" in part:
-                mime_type = part["inline_data"].get("mime_type", "")
-                if mime_type.startswith("image/"):
-                    b64_data = part["inline_data"].get("data", "")
-                    if b64_data:
-                        return base64.b64decode(b64_data)
-        
-        raise ImageGenError("No image data found in response")
+        # Extract image data using helper
+        return _extract_image_from_response(data)
     
     # PR#5: Use APIKeyRotator
     try:
@@ -194,7 +210,25 @@ def generate_image_with_rate_limit(
         if model.lower() in ("gemini", "imagen_4"):
             log(f"[IMAGE GEN] Tạo ảnh với {model} (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
             
-            # Use APIKeyRotator for key rotation
+            # Build generation config with aspect ratio hint if provided
+            generation_config = {
+                "temperature": 0.9,
+                "topK": 40,
+                "topP": 0.95,
+            }
+            
+            # Add aspect ratio to prompt for better results
+            # Note: Gemini doesn't have explicit aspect_ratio parameter, so we enhance the prompt
+            aspect_hint = ""
+            if aspect_ratio and aspect_ratio != "1:1":
+                if aspect_ratio in ("9:16", "4:5"):
+                    aspect_hint = " (portrait orientation, vertical format)"
+                elif aspect_ratio in ("16:9", "21:9"):
+                    aspect_hint = " (landscape orientation, horizontal format)"
+            
+            enhanced_prompt = prompt + aspect_hint if aspect_hint else prompt
+            
+            # Use APIKeyRotator for key rotation with shared API call logic
             def api_call_with_key(api_key: str) -> bytes:
                 """Make API call with given key"""
                 url = gemini_image_endpoint(api_key)
@@ -202,14 +236,10 @@ def generate_image_with_rate_limit(
                 payload = {
                     "contents": [{
                         "parts": [{
-                            "text": prompt
+                            "text": enhanced_prompt
                         }]
                     }],
-                    "generationConfig": {
-                        "temperature": 0.9,
-                        "topK": 40,
-                        "topP": 0.95,
-                    }
+                    "generationConfig": generation_config
                 }
                 
                 response = requests.post(url, json=payload, timeout=IMAGE_GEN_TIMEOUT)
@@ -217,25 +247,8 @@ def generate_image_with_rate_limit(
                 
                 data = response.json()
                 
-                # Extract image data
-                candidates = data.get("candidates", [])
-                if not candidates:
-                    raise ImageGenError("No candidates in response")
-                
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if not parts:
-                    raise ImageGenError("No parts in candidate")
-                
-                # Look for inline_data with image
-                for part in parts:
-                    if "inline_data" in part:
-                        mime_type = part["inline_data"].get("mime_type", "")
-                        if mime_type.startswith("image/"):
-                            b64_data = part["inline_data"].get("data", "")
-                            if b64_data:
-                                return base64.b64decode(b64_data)
-                
-                raise ImageGenError("No image data found in response")
+                # Extract image data using helper
+                return _extract_image_from_response(data)
             
             # Use APIKeyRotator with provided keys
             rotator = APIKeyRotator(api_keys, log_callback=log_fn)
