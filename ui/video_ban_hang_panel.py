@@ -411,7 +411,7 @@ class VideoBanHangPanel(QWidget):
 
         btn_prod = QPushButton("📁 Chọn ảnh sản phẩm")
         btn_prod.setObjectName('btn_primary')
-        btn_prod.setMinimumHeight(32)
+        btn_prod.setMinimumHeight(32)  # 32px per spec (action buttons are 42px)
         btn_prod.clicked.connect(self._pick_product_images)
         pv.addWidget(btn_prod)
 
