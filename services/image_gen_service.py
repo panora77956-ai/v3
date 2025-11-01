@@ -11,6 +11,39 @@ class ImageGenError(Exception):
     pass
 
 
+def _extract_image_from_response(data: dict) -> bytes:
+    """
+    Extract image bytes from Gemini API response
+    
+    Args:
+        data: JSON response from Gemini API
+        
+    Returns:
+        Image as bytes
+        
+    Raises:
+        ImageGenError: If image data cannot be extracted
+    """
+    candidates = data.get("candidates", [])
+    if not candidates:
+        raise ImageGenError("No candidates in response")
+    
+    parts = candidates[0].get("content", {}).get("parts", [])
+    if not parts:
+        raise ImageGenError("No parts in candidate")
+    
+    # Look for inline_data with image
+    for part in parts:
+        if "inline_data" in part:
+            mime_type = part["inline_data"].get("mime_type", "")
+            if mime_type.startswith("image/"):
+                b64_data = part["inline_data"].get("data", "")
+                if b64_data:
+                    return base64.b64decode(b64_data)
+    
+    raise ImageGenError("No image data found in response")
+
+
 def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float = 15.0, enforce_rate_limit: bool = True, log_callback=None) -> bytes:
     """
     Generate image using Gemini Flash Image model with APIKeyRotator (PR#5)
@@ -68,25 +101,8 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
         
         data = response.json()
         
-        # Extract image data
-        candidates = data.get("candidates", [])
-        if not candidates:
-            raise ImageGenError("No candidates in response")
-        
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            raise ImageGenError("No parts in candidate")
-        
-        # Look for inline_data with image
-        for part in parts:
-            if "inline_data" in part:
-                mime_type = part["inline_data"].get("mime_type", "")
-                if mime_type.startswith("image/"):
-                    b64_data = part["inline_data"].get("data", "")
-                    if b64_data:
-                        return base64.b64decode(b64_data)
-        
-        raise ImageGenError("No image data found in response")
+        # Extract image data using helper
+        return _extract_image_from_response(data)
     
     # PR#5: Use APIKeyRotator
     try:
@@ -99,15 +115,16 @@ def generate_image_gemini(prompt: str, timeout: int = None, retry_delay: float =
 # New implementation: Intelligent rate-limited image generation with API key rotation
 def generate_image_with_rate_limit(
     prompt: str,
-    api_keys: Optional[List[str]] = None,
+    api_keys: list = None,
     model: str = "gemini",
     aspect_ratio: str = "1:1",
-    log_callback=None,
-    # Backwards compatibility parameters (ignored)
+    size: str = "1024x1024",
     delay_before: float = 0.0,
     size: str = "1024x1024",
     rate_limit_delay: float = 10.0,
     max_calls_per_minute: int = 6,
+    logger=None,
+    log_callback=None
 ) -> Optional[bytes]:
     """
     Generate image with intelligent API key rotation and rate limiting
@@ -121,9 +138,14 @@ def generate_image_with_rate_limit(
     
     Args:
         prompt: Image generation prompt
-        api_keys: List of Google API keys (if None, loads from config)
-        model: Model to use - 'gemini' for Gemini Flash Image or 'imagen_4' for Imagen 4
-        aspect_ratio: Image aspect ratio from UI (e.g., "9:16", "16:9", "1:1", "4:5")
+        api_keys: List of API keys to rotate through (optional, uses config if not provided)
+        model: Model to use (gemini, dalle, imagen_4, etc.)
+        aspect_ratio: Image aspect ratio (e.g., "9:16", "16:9", "1:1", "4:5")
+        size: Image size
+        delay_before: Seconds to wait before making the call (default 0, no delay)
+        rate_limit_delay: Minimum seconds between calls (default 10.0)
+        max_calls_per_minute: Maximum API calls per minute (default 6)
+        logger: Optional callback function for logging (alias for log_callback)
         log_callback: Optional callback function for logging
         
         # Legacy parameters (kept for backwards compatibility, ignored):
@@ -140,9 +162,12 @@ def generate_image_with_rate_limit(
         - For Gemini: Accepts any aspect ratio from UI
         - Legacy parameters (delay_before, size, etc.) are ignored - use new rotation manager
     """
+    # Support both logger and log_callback parameter names
+    log_fn = logger or log_callback
+    
     def log(msg):
-        if log_callback:
-            log_callback(msg)
+        if log_fn:
+            log_fn(msg)
     
     # Load API keys if not provided
     if api_keys is None:
@@ -164,30 +189,52 @@ def generate_image_with_rate_limit(
             normalized_ratio = "3:4"
             log(f"[ASPECT RATIO] Normalized {aspect_ratio} to {normalized_ratio} for Imagen 4")
     
+    # Get API keys from parameter or config
+    if api_keys is None or len(api_keys) == 0:
+        refresh()
+        api_keys = get_all_keys('google')
+    
+    if not api_keys or len(api_keys) == 0:
+        log("[ERROR] Không có Google API keys khả dụng")
+        return None
+    
+    log(f"[INFO] Sử dụng {len(api_keys)} API keys với rotation")
+    
+    # Call appropriate generation function with key rotation
     try:
-        # Import the new APIKeyRotationManager
-        from services.google.api_key_manager import APIKeyRotationManager
-        
-        # Create rotation manager
-        rotation_manager = APIKeyRotationManager(api_keys, log_callback=log)
-        
-        # Define the API call function based on model
-        if model.lower() == "gemini":
+        if model.lower() in ("gemini", "imagen_4"):
+            log(f"[IMAGE GEN] Tạo ảnh với {model} (lần gọi {_call_counts[model_key]}/{max_calls_per_minute})...")
+            
+            # Build generation config with aspect ratio hint if provided
+            generation_config = {
+                "temperature": 0.9,
+                "topK": 40,
+                "topP": 0.95,
+            }
+            
+            # Add aspect ratio to prompt for better results
+            # Note: Gemini doesn't have explicit aspect_ratio parameter, so we enhance the prompt
+            aspect_hint = ""
+            if aspect_ratio and aspect_ratio != "1:1":
+                if aspect_ratio in ("9:16", "4:5"):
+                    aspect_hint = " (portrait orientation, vertical format)"
+                elif aspect_ratio in ("16:9", "21:9"):
+                    aspect_hint = " (landscape orientation, horizontal format)"
+            
+            enhanced_prompt = prompt + aspect_hint if aspect_hint else prompt
+            
+            # Use APIKeyRotator for key rotation with shared API call logic
             def api_call_with_key(api_key: str) -> bytes:
-                """Make Gemini API call with the given key"""
+                """Make API call with given key"""
                 url = gemini_image_endpoint(api_key)
                 
                 payload = {
                     "contents": [{
                         "parts": [{
-                            "text": prompt
+                            "text": enhanced_prompt
                         }]
                     }],
-                    "generationConfig": {
-                        "temperature": 0.9,
-                        "topK": 40,
-                        "topP": 0.95,
-                    }
+                    "generationConfig": generation_config
                 }
                 
                 response = requests.post(url, json=payload, timeout=IMAGE_GEN_TIMEOUT)
@@ -195,70 +242,22 @@ def generate_image_with_rate_limit(
                 
                 data = response.json()
                 
-                # Extract image data
-                candidates = data.get("candidates", [])
-                if not candidates:
-                    raise ImageGenError("No candidates in response")
-                
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if not parts:
-                    raise ImageGenError("No parts in candidate")
-                
-                # Look for inline_data with image
-                for part in parts:
-                    if "inline_data" in part:
-                        mime_type = part["inline_data"].get("mime_type", "")
-                        if mime_type.startswith("image/"):
-                            b64_data = part["inline_data"].get("data", "")
-                            if b64_data:
-                                return base64.b64decode(b64_data)
-                
-                raise ImageGenError("No image data found in response")
-        
-        elif model.lower() == "imagen_4":
-            def api_call_with_key(api_key: str) -> bytes:
-                """Make Imagen 4 API call with the given key"""
-                # NOTE: Imagen 4 endpoint is PLACEHOLDER - not verified against actual Google API
-                # TODO: Replace with actual Imagen 4 endpoint when available
-                # Current implementation uses Gemini base URL as example only
-                # VERIFY endpoint exists before using in production
-                url = f"{GEMINI_BASE}/models/imagen-4.0-generate:generateContent?key={api_key}"
-                
-                payload = {
-                    "contents": [{
-                        "parts": [{
-                            "text": prompt
-                        }]
-                    }],
-                    "generationConfig": {
-                        "aspectRatio": normalized_ratio,
-                        "temperature": 0.9,
-                    }
-                }
-                
-                response = requests.post(url, json=payload, timeout=IMAGE_GEN_TIMEOUT)
-                response.raise_for_status()
-                
-                data = response.json()
-                
-                # Extract image data (same format as Gemini)
-                candidates = data.get("candidates", [])
-                if not candidates:
-                    raise ImageGenError("No candidates in response")
-                
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if not parts:
-                    raise ImageGenError("No parts in candidate")
-                
-                for part in parts:
-                    if "inline_data" in part:
-                        mime_type = part["inline_data"].get("mime_type", "")
-                        if mime_type.startswith("image/"):
-                            b64_data = part["inline_data"].get("data", "")
-                            if b64_data:
-                                return base64.b64decode(b64_data)
-                
-                raise ImageGenError("No image data found in response")
+                # Extract image data using helper
+                return _extract_image_from_response(data)
+            
+            # Use APIKeyRotator with provided keys
+            rotator = APIKeyRotator(api_keys, log_callback=log_fn)
+            return rotator.execute(api_call_with_key)
+            
+        elif model.lower() == "dalle":
+            log(f"[IMAGE GEN] Tạo ảnh với DALL-E...")
+            # Import DALL-E client if available
+            try:
+                from services.openai.dalle_client import generate_image
+                return generate_image(prompt, size=size)
+            except ImportError:
+                log("[ERROR] DALL-E client không khả dụng")
+                return None
         else:
             log(f"[ERROR] Unsupported model: {model}")
             return None

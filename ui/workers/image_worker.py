@@ -34,19 +34,33 @@ class ImageWorker(QThread):
 
     def run(self):
         """Execute image generation in background thread"""
+        # Get API keys from config
+        from services.core.config import load as load_cfg
+        cfg = load_cfg()
+        api_keys = cfg.get('google_api_keys', [])
+        
+        if not api_keys:
+            self.error.emit(0, "Không có Google API keys trong config")
+            self.all_done.emit()
+            return
+        
         for i, scene in enumerate(self.scenes):
             try:
                 scene_idx = scene.get('index', i)
                 prompt = scene.get('prompt', '')
+                aspect_ratio = scene.get('aspect_ratio', '1:1')
 
                 self.progress.emit(scene_idx, f"Đang tạo ảnh cảnh {scene_idx + 1}...")
 
-                # Generate image based on model
+                # Generate image based on model using rate-limited function
                 if self.model == "gemini":
-                    from services.image_gen_service import generate_image_gemini
-                    img_bytes = generate_image_gemini(
-                        prompt,
-                        log_callback=lambda msg: self.progress.emit(scene_idx, msg)
+                    from services.image_gen_service import generate_image_with_rate_limit
+                    img_bytes = generate_image_with_rate_limit(
+                        prompt=prompt,
+                        api_keys=api_keys,
+                        model="gemini",
+                        aspect_ratio=aspect_ratio,
+                        logger=lambda msg: self.progress.emit(scene_idx, msg)
                     )
                 else:
                     from services.whisk_service import generate_image
@@ -57,8 +71,8 @@ class ImageWorker(QThread):
                 else:
                     self.error.emit(scene_idx, "Không nhận được dữ liệu ảnh")
 
-                # Rate limiting between requests
-                time.sleep(1)
+                # Rate limiting between requests (reduced since generate_image_with_rate_limit handles it)
+                time.sleep(0.5)
 
             except Exception as e:
                 self.error.emit(scene_idx, f"Lỗi: {str(e)}")

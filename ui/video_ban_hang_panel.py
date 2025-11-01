@@ -208,6 +208,22 @@ class ImageGenerationWorker(QThread):
 
     def run(self):
         try:
+            # Get API keys and settings from config
+            from services.core.config import load as load_cfg
+            cfg_data = load_cfg()
+            api_keys = cfg_data.get('google_api_keys', [])
+            
+            if not api_keys:
+                self.progress.emit("[ERROR] Không có Google API keys trong config")
+                self.finished.emit(False)
+                return
+            
+            # Get aspect ratio and model from config
+            aspect_ratio = self.cfg.get('ratio', '9:16')
+            model = 'gemini' if 'Gemini' in self.cfg.get('image_model', 'Gemini') else 'imagen_4'
+            
+            self.progress.emit(f"[INFO] Sử dụng {len(api_keys)} API keys, model: {model}, tỷ lệ: {aspect_ratio}")
+            
             # Generate scene images
             scenes = self.outline.get("scenes", [])
             for i, scene in enumerate(scenes):
@@ -246,19 +262,19 @@ class ImageGenerationWorker(QThread):
                         self.progress.emit(f"Whisk failed: {str(e)[:100]}")
                         img_data = None
 
-                # Fallback to Gemini
+                # Fallback to Gemini with rate limiting
                 if img_data is None:
                     try:
                         self.progress.emit(f"Cảnh {scene.get('index')}: Dùng Gemini...")
 
-                        # Get aspect ratio from config
-                        aspect_ratio = self.cfg.get("ratio", "1:1")
-
-                        # Use new intelligent rotation with aspect ratio
+                        # Use rate-limited generation with API key rotation
                         img_data = image_gen_service.generate_image_with_rate_limit(
-                            prompt,
-                            aspect_ratio=aspect_ratio,  # Pass aspect ratio from UI
-                            log_callback=lambda msg: self.progress.emit(msg),
+                            prompt=prompt,
+                            api_keys=api_keys,
+                            model=model,
+                            aspect_ratio=aspect_ratio,
+                            delay_before=0,  # Explicitly no extra delay
+                            logger=lambda msg: self.progress.emit(msg),
                         )
 
                         if img_data:
@@ -292,14 +308,14 @@ class ImageGenerationWorker(QThread):
                 text_overlay = version.get("thumbnail_text_overlay", "")
 
                 try:
-                    # Get aspect ratio from config
-                    aspect_ratio = self.cfg.get("ratio", "1:1")
-                    
-                    # Use new intelligent rotation with aspect ratio
+                    # Use rate-limited generation with API key rotation
                     thumb_data = image_gen_service.generate_image_with_rate_limit(
-                        prompt,
-                        aspect_ratio=aspect_ratio,  # Pass aspect ratio from UI
-                        log_callback=lambda msg: self.progress.emit(msg)
+                        prompt=prompt,
+                        api_keys=api_keys,
+                        model=model,
+                        aspect_ratio=aspect_ratio,
+                        delay_before=0,
+                        logger=lambda msg: self.progress.emit(msg)
                     )
 
                     if thumb_data:
