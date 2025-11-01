@@ -2,22 +2,23 @@
 """
 Unified Theme System v2 - Video Super Ultra v1.0.0.0
 Complete vibrant theme with consistent typography across all tabs
+PR#5: Fixed QSS syntax, unified Segoe UI font, flat darker palette
 """
 
-# Vibrant Color Palette
+# Flat Darker Color Palette (PR#5: Less garish)
 COLORS = {
-    'primary': '#2196F3',      # Blue - Primary actions
-    'primary_dark': '#1976D2',
-    'primary_light': '#64B5F6',
-    'primary_hover': '#E3F2FD',
-    'success': '#4CAF50',      # Green - Success/Save
-    'success_hover': '#66BB6A',
-    'warning': '#FF9800',      # Orange - Warning/Import
-    'warning_hover': '#FFB74D',
-    'danger': '#F44336',       # Red - Delete/Danger
-    'danger_hover': '#EF5350',
-    'info': '#00BCD4',         # Cyan - Info/Check
-    'info_hover': '#26C6DA',
+    'primary': '#1565C0',      # Darker Blue - Primary actions
+    'primary_dark': '#0D47A1',
+    'primary_light': '#1976D2',
+    'primary_hover': '#BBDEFB',
+    'success': '#2E7D32',      # Darker Green - Success/Save
+    'success_hover': '#388E3C',
+    'warning': '#E65100',      # Darker Orange - Warning/Import
+    'warning_hover': '#EF6C00',
+    'danger': '#C62828',       # Darker Red - Delete/Danger
+    'danger_hover': '#D32F2F',
+    'info': '#00838F',         # Darker Cyan - Info/Check
+    'info_hover': '#00ACC1',
     'background': '#FAFAFA',
     'surface': '#FFFFFF',
     'border': '#E0E0E0',
@@ -27,39 +28,41 @@ COLORS = {
     'text_secondary': '#757575',
 }
 
-# Unified Material Design Stylesheet with +1px typography and vibrant colors
+# Unified Material Design Stylesheet with Segoe UI and flat darker colors (PR#5)
 UNIFIED_STYLESHEET = """
-/* Global - Base font size increased to 13px */
+/* Global - Unified Segoe UI, 13px base (PR#5) */
 QWidget {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Segoe UI", Arial, sans-serif;
     font-size: 13px;
+    color: #212121;
 }
 
-/* Labels - 14px bold */
+/* Labels - 13px normal weight (PR#5: not all labels should be bold) */
 QLabel {
     color: #424242;
-    font-size: 14px;
-    font-weight: bold;
+    font-size: 13px;
+    font-weight: normal;
 }
 
-/* Buttons - 14px bold, vibrant colors (PR#4: Reduced padding for smaller buttons) */
+/* Buttons - 13px, flat darker colors (PR#5) */
 QPushButton {
-    background: #2196F3;
+    background: #1565C0;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 4px 12px;
-    min-height: 24px;
-    font-weight: bold;
+    border-radius: 6px;
+    padding: 8px 16px;
+    min-height: 32px;
+    font-weight: 600;
     font-size: 13px;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
 QPushButton:hover {
-    background: #64B5F6;
+    background: #1976D2;
 }
 
 QPushButton:pressed {
-    background: #1976D2;
+    background: #0D47A1;
 }
 
 QPushButton:disabled {
@@ -76,86 +79,86 @@ QPushButton[objectName*="btn_primary"] {
     font-size: 12px;
 }
 
-/* Success Buttons (Green) - Save actions */
+/* Success Buttons (Darker Green) - Save actions (PR#5) */
 QPushButton[objectName*="save"],
 QPushButton[objectName*="success"],
 QPushButton[objectName*="luu"] {
-    background: #4CAF50;
+    background: #2E7D32;
 }
 
 QPushButton[objectName*="save"]:hover,
 QPushButton[objectName*="success"]:hover,
 QPushButton[objectName*="luu"]:hover {
-    background: #66BB6A;
+    background: #388E3C;
 }
 
 QPushButton[objectName*="save"]:pressed,
 QPushButton[objectName*="success"]:pressed,
 QPushButton[objectName*="luu"]:pressed {
-    background: #388E3C;
+    background: #1B5E20;
 }
 
-/* Warning Buttons (Orange) - Import actions */
+/* Warning Buttons (Darker Orange) - Import actions (PR#5) */
 QPushButton[objectName*="import"],
 QPushButton[objectName*="warning"],
 QPushButton[objectName*="nhap"] {
-    background: #FF9800;
+    background: #E65100;
 }
 
 QPushButton[objectName*="import"]:hover,
 QPushButton[objectName*="warning"]:hover,
 QPushButton[objectName*="nhap"]:hover {
-    background: #FFB74D;
+    background: #EF6C00;
 }
 
 QPushButton[objectName*="import"]:pressed,
 QPushButton[objectName*="warning"]:pressed,
 QPushButton[objectName*="nhap"]:pressed {
-    background: #F57C00;
+    background: #BF360C;
 }
 
-/* Danger Buttons (Red) - Delete actions */
+/* Danger Buttons (Darker Red) - Delete actions (PR#5) */
 QPushButton[objectName*="delete"],
 QPushButton[objectName*="danger"],
 QPushButton[objectName*="xoa"],
 QPushButton[objectName*="del"] {
-    background: #F44336;
+    background: #C62828;
 }
 
 QPushButton[objectName*="delete"]:hover,
 QPushButton[objectName*="danger"]:hover,
 QPushButton[objectName*="xoa"]:hover,
 QPushButton[objectName*="del"]:hover {
-    background: #EF5350;
+    background: #D32F2F;
 }
 
 QPushButton[objectName*="delete"]:pressed,
 QPushButton[objectName*="danger"]:pressed,
 QPushButton[objectName*="xoa"]:pressed,
 QPushButton[objectName*="del"]:pressed {
-    background: #C62828;
+    background: #B71C1C;
 }
 
-/* Info Buttons (Cyan) - Check/Info actions */
+/* Info Buttons (Darker Cyan) - Check/Info actions (PR#5) */
 QPushButton[objectName*="check"],
 QPushButton[objectName*="info"],
 QPushButton[objectName*="kiem"],
 QPushButton[objectName*="test"] {
-    background: #00BCD4;
+    background: #00838F;
 }
 
 QPushButton[objectName*="check"]:hover,
 QPushButton[objectName*="info"]:hover,
 QPushButton[objectName*="kiem"]:hover,
 QPushButton[objectName*="test"]:hover {
-    background: #26C6DA;
+    background: #00ACC1;
 }
 
 QPushButton[objectName*="check"]:pressed,
 QPushButton[objectName*="info"]:pressed,
 QPushButton[objectName*="kiem"]:pressed,
 QPushButton[objectName*="test"]:pressed {
-    background: #0097A7;
+    background: #006064;
 }
 
 /* Text Inputs */
@@ -280,60 +283,64 @@ QTabWidget::pane {
     background: white;
 }
 
-/* PR#4: Enhanced tab styling with bold text, colorful backgrounds, wider tabs */
+/* PR#5: Bold tab styling with flat darker colorful backgrounds */
 QTabBar::tab {
+    font-family: "Segoe UI", Arial, sans-serif;
     font-weight: 700;
     font-size: 14px;
     min-width: 150px;
-    padding: 10px 20px;
+    padding: 12px 24px;
     margin-right: 2px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
     color: white;
 }
 
-/* Different color for each tab (Cài đặt, Image2Video, Text2Video, Video bán hàng) */
+/* Different color for each tab - darker flat colors (PR#5) */
 QTabBar::tab:nth-child(1) {
-    background: #2196F3;  /* Blue - Cài đặt */
+    background: #1565C0;  /* Darker Blue - Cài đặt */
 }
 
 QTabBar::tab:nth-child(2) {
-    background: #4CAF50;  /* Green - Image2Video */
+    background: #2E7D32;  /* Darker Green - Image2Video */
 }
 
 QTabBar::tab:nth-child(3) {
-    background: #FF9800;  /* Orange - Text2Video */
+    background: #E65100;  /* Darker Orange - Text2Video */
 }
 
 QTabBar::tab:nth-child(4) {
-    background: #9C27B0;  /* Purple - Video bán hàng */
+    background: #6A1B9A;  /* Darker Purple - Video bán hàng */
 }
 
 QTabBar::tab:selected {
     border-bottom: 4px solid white;
     font-size: 15px;
+    padding-bottom: 8px;
 }
 
 QTabBar::tab:hover:!selected {
-    opacity: 0.8;
+    filter: brightness(1.1);
 }
 
-/* Group Box - 16px bold title, reduced spacing (6px) */
+/* Group Box - 14px bold title with icon support (PR#5) */
 QGroupBox {
     border: 1px solid #E0E0E0;
     border-radius: 8px;
-    margin-top: 10px;
-    padding-top: 6px;
+    margin-top: 12px;
+    padding-top: 8px;
     background: white;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    padding: 6px 10px;
+    padding: 8px 12px;
     color: #424242;
     font-weight: bold;
-    font-size: 16px;
+    font-size: 14px;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
 
 /* Scroll Bar */
