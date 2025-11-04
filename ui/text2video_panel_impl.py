@@ -71,7 +71,8 @@ def extract_location_context(scene_data):
     screenplay = scene_data.get("screenplay_vi", "") or scene_data.get("screenplay_tgt", "")
     if screenplay:
         # Pattern: INT/EXT. <LOCATION> - TIME
-        match = re.search(r'(INT\.|EXT\.)\s+(.+?)\s*-\s*(.+?)(?:\s*\(|$)', screenplay, re.IGNORECASE)
+        # Use MULTILINE flag so $ matches end of line, not just end of string
+        match = re.search(r'(INT\.|EXT\.)\s+(.+?)\s*-\s*(.+?)(?:\s*\(|\s*$)', screenplay, re.IGNORECASE | re.MULTILINE)
         if match:
             int_ext = match.group(1).strip()  # INT. or EXT.
             location_name = match.group(2).strip()  # e.g., HẺM NHỎ
