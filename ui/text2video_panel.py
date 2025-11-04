@@ -1177,7 +1177,7 @@ class Text2VideoPane(QWidget):
 
     def _clear_video_cards(self):
         """Clear all video cards from the UI"""
-        if hasattr(self, 'cards') and self.cards:
+        if hasattr(self, 'cards') and self.cards is not None:
             self.cards.clear()
 
     def _clear_current_project(self):
