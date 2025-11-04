@@ -5,7 +5,7 @@ import re
 
 from PyQt5.Qt import QDesktopServices
 from PyQt5.QtCore import QLocale, QSize, Qt, QThread, QUrl
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QKeySequence
 from PyQt5.QtWidgets import (
     QScrollArea,
     QCheckBox,
@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QShortcut,
     QSlider,
     QSpinBox,
     QTableWidget,
@@ -432,6 +433,12 @@ class Text2VideoPane(QWidget):
         self.btn_open_folder.setObjectName("btn_primary_open")
         colL.addWidget(self.btn_open_folder)
 
+        # Clear project button
+        self.btn_clear_project = QPushButton("🔄 Tạo dự án mới")
+        self.btn_clear_project.setObjectName("btn_gray")
+        self.btn_clear_project.setEnabled(False)  # Disabled initially
+        colL.addWidget(self.btn_clear_project)
+
         colL.addWidget(QLabel("<b>Console:</b>"))
         self.console = QTextEdit(); self.console.setReadOnly(True); self.console.setMinimumHeight(120)
         colL.addWidget(self.console, 0)
@@ -544,6 +551,13 @@ class Text2VideoPane(QWidget):
         # Domain/Topic cascade
         self.cb_domain.currentIndexChanged.connect(self._on_domain_changed)
         self.cb_topic.currentIndexChanged.connect(self._on_topic_changed)
+
+        # Clear project button
+        self.btn_clear_project.clicked.connect(self._clear_current_project)
+
+        # Keyboard shortcut for clearing project (Ctrl+N)
+        shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
+        shortcut.activated.connect(self._clear_current_project)
 
         # Keep worker reference
         self.worker = None
@@ -808,6 +822,9 @@ class Text2VideoPane(QWidget):
         # Part D: Store script data and enable bible generation button
         self._script_data = data
         self.btn_generate_bible.setEnabled(True)
+
+        # Enable clear project button after script generation
+        self.btn_clear_project.setEnabled(True)
 
         # Part D: Auto-generate character bible if exists in data
         cb = data.get("character_bible") or []
@@ -1169,3 +1186,101 @@ class Text2VideoPane(QWidget):
             "expressiveness": expressiveness,
             "apply_to_all_scenes": apply_all
         }
+
+    def _is_video_generating(self):
+        """Check if video generation is currently in progress"""
+        return self.btn_stop.isEnabled()
+
+    def _stop_video_generation(self):
+        """Stop current video generation"""
+        self.stop_processing()
+
+    def _clear_video_cards(self):
+        """Clear all video cards from the UI"""
+        if hasattr(self, 'cards') and self.cards is not None:
+            self.cards.clear()
+
+    def _clear_current_project(self):
+        """Clear current project workspace to start new project
+        
+        This function:
+        - Clears all UI fields (project name, idea, script results, video cards)
+        - Resets internal state
+        - DOES NOT delete any downloaded files
+        - Shows confirmation dialog first
+        """
+        # Show confirmation dialog
+        reply = QMessageBox.question(
+            self,
+            'Xác nhận xóa dự án',
+            'Bạn có chắc muốn xóa dự án hiện tại và bắt đầu mới?\n\n'
+            '⚠️ Lưu ý: Files đã tải về sẽ KHÔNG bị xóa, chỉ xóa dữ liệu trên giao diện.',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.No:
+            return
+        
+        # Check if video generation is in progress
+        if self._is_video_generating():
+            reply_stop = QMessageBox.warning(
+                self,
+                'Video đang tạo',
+                'Video đang được tạo. Bạn có chắc muốn dừng và xóa dự án?',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply_stop == QMessageBox.No:
+                return
+            
+            # Stop current video generation
+            self._stop_video_generation()
+        
+        # Clear UI fields
+        self.ed_project.clear()
+        self.ed_idea.clear()
+        
+        # Clear domain/topic selection
+        if hasattr(self, 'cb_domain'):
+            self.cb_domain.setCurrentIndex(0)
+        if hasattr(self, 'cb_topic'):
+            self.cb_topic.clear()
+            self.cb_topic.addItem("(Chọn lĩnh vực để load chủ đề)", "")
+            self.cb_topic.setEnabled(False)
+        
+        # Clear script results
+        self.view_story.clear()
+        if hasattr(self, 'view_bible'):
+            self.view_bible.clear()
+        
+        # Clear scene results table
+        if hasattr(self, 'table'):
+            self.table.setRowCount(0)
+        
+        # Clear video cards
+        self._clear_video_cards()
+        
+        # Clear social media and thumbnail displays
+        if hasattr(self, 'social_display'):
+            self.social_display.clear()
+        if hasattr(self, 'thumbnail_display'):
+            self.thumbnail_display.clear()
+        
+        # Reset internal state
+        self._ctx = {}
+        self._title = "Project"
+        self._character_bible = None
+        self._script_data = None
+        self._cards_state = {}
+        
+        # Disable buttons that require project data
+        self.btn_generate_bible.setEnabled(False)
+        self.btn_clear_project.setEnabled(False)
+        
+        # Show success message
+        self._append_log("[INFO] ✅ Đã xóa dự án hiện tại. Bạn có thể bắt đầu dự án mới.")
+        
+        # Switch to first tab
+        if hasattr(self, 'result_tabs'):
+            self.result_tabs.setCurrentIndex(0)
