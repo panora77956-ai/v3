@@ -1,0 +1,7 @@
+# Installation tip: pip install -r requirements.txt
+PyQt5>=5.15
+requests>=2.31
+Pillow>=10.0.0
+google-generativeai>=0.3.0
+google-auth>=2.16.0
+google-auth-httplib2>=0.1.0
