@@ -50,13 +50,49 @@ def get_model_key_from_display(display_name):
             return key
     return display_name  # Fallback
 
-def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str, ratio_str:str, style:str, seconds:int=8, copies:int=1, resolution_hint:str=None, character_bible=None, enhanced_bible=None, voice_settings=None):
+def extract_location_context(scene_data):
+    """
+    Extract location context from scene data.
+    First tries scene.location field, then falls back to parsing screenplay text.
+    
+    Args:
+        scene_data: Scene dict with potential 'location' field or 'screenplay_vi' text
+    
+    Returns:
+        Formatted location context string or None
+    """
+    # First try: direct location field from LLM-generated scene
+    location = scene_data.get("location", "").strip()
+    if location:
+        return location
+    
+    # Second try: parse scene header from screenplay text (if available)
+    import re
+    screenplay = scene_data.get("screenplay_vi", "") or scene_data.get("screenplay_tgt", "")
+    if screenplay:
+        # Pattern: INT/EXT. <LOCATION> - TIME
+        match = re.search(r'(INT\.|EXT\.)\s+(.+?)\s*-\s*(.+?)(?:\s*\(|$)', screenplay, re.IGNORECASE)
+        if match:
+            int_ext = match.group(1).strip()  # INT. or EXT.
+            location_name = match.group(2).strip()  # e.g., HẺM NHỎ
+            time = match.group(3).strip()  # e.g., NGÀY
+            
+            # Build descriptive context
+            setting_type = "Interior" if "INT" in int_ext.upper() else "Exterior"
+            time_desc = "daytime" if any(x in time.upper() for x in ["NGÀY", "DAY"]) else "nighttime"
+            
+            return f"{setting_type} setting: {location_name}, {time_desc} lighting"
+    
+    return None
+
+def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str, ratio_str:str, style:str, seconds:int=8, copies:int=1, resolution_hint:str=None, character_bible=None, enhanced_bible=None, voice_settings=None, location_context:str=None):
     """
     Strict prompt JSON schema:
     - objective/persona/constraints/assets/hard_locks/character_details/setting_details/key_action/camera_direction/audio/graphics/negatives/generation
     - bilingual localization (vi + target)
     
     Part D: Now supports enhanced_bible (CharacterBible object) for detailed character consistency
+    Part E: Now supports location_context for maintaining consistent backgrounds across scenes
     """
     ratio_map = {
         '16:9': ('1920x1080', 'VIDEO_ASPECT_RATIO_LANDSCAPE'),
@@ -87,11 +123,16 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
     if "tài liệu" in sl or "documentary" in sl: style_tags += ["documentary","handheld feel"]
     if not style_tags: style_tags = ["modern","clean"]
 
+    # Part E: Enhanced location consistency with specific location context
+    location_lock = "Keep to single coherent environment; no random background swaps."
+    if location_context:
+        location_lock = f"CRITICAL: All scenes must be in {location_context}. Do NOT change background, setting, or environment. Maintain exact location consistency across all scenes."
+    
     hard_locks = {
         "identity": "Keep the same face, body, and identity across scenes.",
         "wardrobe": "Outfit consistency is required. Do NOT change outfit, color, or add accessories without instruction.",
         "hair_makeup": "Keep hair and makeup consistent; do NOT change length or color unless explicitly instructed.",
-        "location": "Keep to single coherent environment; no random background swaps."
+        "location": location_lock
     }
 
     # Part D: Enhanced character details with detailed bible
@@ -156,7 +197,7 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
         "assets": { "images": {} },
         "hard_locks": hard_locks,
         "character_details": character_details,
-        "setting_details": "Clean composition, minimal props, no clutter; coherent lighting per scene style.",
+        "setting_details": f"{location_context}. Clean composition, minimal props, no clutter; coherent lighting per scene style." if location_context else "Clean composition, minimal props, no clutter; coherent lighting per scene style.",
         "key_action": (desc_tgt or desc_vi or "").strip(),
         "camera_direction": segments,
         "audio": {
