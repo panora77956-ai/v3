@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -56,7 +55,7 @@ class _KeyItem(QWidget):
         self.lb_key.setTextInteractionFlags(self.lb_key.textInteractionFlags() | Qt.TextSelectableByMouse)
         # Store full key in property and show in tooltip
         self.lb_key.setProperty("full_key", self.key)
-        self.lb_key.setToolTip("Click to copy full key")
+        self.lb_key.setToolTip(f"Full key (selectable): {self.key}")
         
         self.lb_status=QLabel(''); self.lb_status.setFont(FONT_TEXT)
         self.btn_test=QPushButton('✓'); self.btn_test.setObjectName('btn_check_kiem')
