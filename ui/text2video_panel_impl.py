@@ -1,6 +1,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -20,6 +21,18 @@ _ASPECT_MAP = {
     "4:5": "VIDEO_ASPECT_RATIO_PORTRAIT",
     "1:1": "VIDEO_ASPECT_RATIO_SQUARE",
 }
+
+# Location extraction constants
+# Regex pattern for parsing screenplay headers: INT./EXT. LOCATION - TIME (duration)
+# Example: "INT. HẺM NHỎ - NGÀY (8s)" or "EXT. PARK - DAY"
+_SCREENPLAY_LOCATION_PATTERN = re.compile(
+    r'(INT\.|EXT\.)\s+(.+?)\s*-\s*(.+?)(?:\s*\(|\s*$)',
+    re.IGNORECASE | re.MULTILINE
+)
+
+# Time keywords for daytime detection (support Vietnamese and English)
+_DAYTIME_KEYWORDS = ["NGÀY", "DAY", "MORNING", "SÁNG", "BUỔI SÁNG"]
+_NIGHTTIME_KEYWORDS = ["ĐÊM", "NIGHT", "EVENING", "TỐI", "BUỔI TỐI"]
 _LANGS = [
     ("Tiếng Việt","vi"), ("Tiếng Anh","en"), ("Tiếng Nhật","ja"), ("Tiếng Hàn","ko"), ("Tiếng Trung","zh"),
     ("Tiếng Pháp","fr"), ("Tiếng Đức","de"), ("Tiếng Tây Ban Nha","es"), ("Tiếng Nga","ru"), ("Tiếng Thái","th"), ("Tiếng Indonesia","id")
@@ -67,12 +80,9 @@ def extract_location_context(scene_data):
         return location
     
     # Second try: parse scene header from screenplay text (if available)
-    import re
     screenplay = scene_data.get("screenplay_vi", "") or scene_data.get("screenplay_tgt", "")
     if screenplay:
-        # Pattern: INT/EXT. <LOCATION> - TIME
-        # Use MULTILINE flag so $ matches end of line, not just end of string
-        match = re.search(r'(INT\.|EXT\.)\s+(.+?)\s*-\s*(.+?)(?:\s*\(|\s*$)', screenplay, re.IGNORECASE | re.MULTILINE)
+        match = _SCREENPLAY_LOCATION_PATTERN.search(screenplay)
         if match:
             int_ext = match.group(1).strip()  # INT. or EXT.
             location_name = match.group(2).strip()  # e.g., HẺM NHỎ
@@ -80,11 +90,29 @@ def extract_location_context(scene_data):
             
             # Build descriptive context
             setting_type = "Interior" if "INT" in int_ext.upper() else "Exterior"
-            time_desc = "daytime" if any(x in time.upper() for x in ["NGÀY", "DAY"]) else "nighttime"
+            # Check for daytime keywords
+            time_upper = time.upper()
+            is_daytime = any(keyword in time_upper for keyword in _DAYTIME_KEYWORDS)
+            time_desc = "daytime" if is_daytime else "nighttime"
             
             return f"{setting_type} setting: {location_name}, {time_desc} lighting"
     
     return None
+
+def _build_setting_details(location_context):
+    """
+    Build setting_details string with optional location context.
+    
+    Args:
+        location_context: Optional location context string
+    
+    Returns:
+        Formatted setting_details string
+    """
+    base_details = "Clean composition, minimal props, no clutter; coherent lighting per scene style."
+    if location_context:
+        return f"{location_context}. {base_details}"
+    return base_details
 
 def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str, ratio_str:str, style:str, seconds:int=8, copies:int=1, resolution_hint:str=None, character_bible=None, enhanced_bible=None, voice_settings=None, location_context:str=None):
     """
@@ -198,7 +226,7 @@ def build_prompt_json(scene_index:int, desc_vi:str, desc_tgt:str, lang_code:str,
         "assets": { "images": {} },
         "hard_locks": hard_locks,
         "character_details": character_details,
-        "setting_details": f"{location_context}. Clean composition, minimal props, no clutter; coherent lighting per scene style." if location_context else "Clean composition, minimal props, no clutter; coherent lighting per scene style.",
+        "setting_details": _build_setting_details(location_context),
         "key_action": (desc_tgt or desc_vi or "").strip(),
         "camera_direction": segments,
         "audio": {
