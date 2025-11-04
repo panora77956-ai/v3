@@ -831,6 +831,9 @@ class Text2VideoPane(QWidget):
         if cb:
             self._generate_character_bible_from_data(data)
 
+        # Auto-generate social media and thumbnail content
+        self._auto_generate_social_and_thumbnail(data)
+
         # PR#4: If stop button is enabled (auto mode), automatically start video generation
         if not self.btn_stop.isEnabled():
             # Normal mode - re-enable auto button
@@ -1186,6 +1189,165 @@ class Text2VideoPane(QWidget):
             "expressiveness": expressiveness,
             "apply_to_all_scenes": apply_all
         }
+
+    def _auto_generate_social_and_thumbnail(self, script_data):
+        """
+        Auto-generate social media and thumbnail content after script generation
+        
+        Args:
+            script_data: Script data dictionary from generate_script()
+        """
+        try:
+            from services.llm_story_service import generate_social_media, generate_thumbnail_design
+            
+            # Generate social media content
+            self._append_log("[INFO] Đang tạo nội dung Social Media...")
+            try:
+                social_data = generate_social_media(script_data, provider="Gemini 2.5")
+                self._display_social_media(social_data)
+                self._append_log("[INFO] ✅ Social Media content đã tạo xong")
+            except Exception as e:
+                self._append_log(f"[WARN] Không thể tạo Social Media content: {e}")
+            
+            # Generate thumbnail design
+            self._append_log("[INFO] Đang tạo Thumbnail design...")
+            try:
+                thumbnail_data = generate_thumbnail_design(script_data, provider="Gemini 2.5")
+                self._display_thumbnail_design(thumbnail_data)
+                self._append_log("[INFO] ✅ Thumbnail design đã tạo xong")
+            except Exception as e:
+                self._append_log(f"[WARN] Không thể tạo Thumbnail design: {e}")
+                
+        except Exception as e:
+            self._append_log(f"[ERR] Lỗi khi tạo Social/Thumbnail: {e}")
+
+    def _display_social_media(self, social_data):
+        """Display social media content in the Social tab"""
+        if not social_data:
+            return
+        
+        # Format the content nicely
+        content_parts = []
+        
+        # Version 1: Casual/Friendly
+        if "casual" in social_data:
+            casual = social_data["casual"]
+            content_parts.append("=" * 60)
+            content_parts.append("📱 VERSION 1: CASUAL/FRIENDLY (TikTok/YouTube Shorts)")
+            content_parts.append("=" * 60)
+            content_parts.append(f"\n🎯 Platform: {casual.get('platform', 'TikTok/YouTube Shorts')}")
+            content_parts.append(f"\n📝 Title:\n{casual.get('title', '')}")
+            content_parts.append(f"\n📄 Description:\n{casual.get('description', '')}")
+            hashtags = casual.get('hashtags', [])
+            if hashtags:
+                content_parts.append(f"\n🏷️ Hashtags:\n{' '.join(hashtags)}")
+            content_parts.append(f"\n📢 CTA:\n{casual.get('cta', '')}")
+            content_parts.append(f"\n⏰ Best Time: {casual.get('best_time', 'N/A')}")
+        
+        # Version 2: Professional
+        if "professional" in social_data:
+            prof = social_data["professional"]
+            content_parts.append("\n\n" + "=" * 60)
+            content_parts.append("💼 VERSION 2: PROFESSIONAL (LinkedIn/Facebook)")
+            content_parts.append("=" * 60)
+            content_parts.append(f"\n🎯 Platform: {prof.get('platform', 'LinkedIn/Facebook')}")
+            content_parts.append(f"\n📝 Title:\n{prof.get('title', '')}")
+            content_parts.append(f"\n📄 Description:\n{prof.get('description', '')}")
+            hashtags = prof.get('hashtags', [])
+            if hashtags:
+                content_parts.append(f"\n🏷️ Hashtags:\n{' '.join(hashtags)}")
+            content_parts.append(f"\n📢 CTA:\n{prof.get('cta', '')}")
+            content_parts.append(f"\n⏰ Best Time: {prof.get('best_time', 'N/A')}")
+        
+        # Version 3: Funny/Engaging
+        if "funny" in social_data:
+            funny = social_data["funny"]
+            content_parts.append("\n\n" + "=" * 60)
+            content_parts.append("😂 VERSION 3: FUNNY/ENGAGING (TikTok/Instagram Reels)")
+            content_parts.append("=" * 60)
+            content_parts.append(f"\n🎯 Platform: {funny.get('platform', 'TikTok/Instagram Reels')}")
+            content_parts.append(f"\n📝 Title:\n{funny.get('title', '')}")
+            content_parts.append(f"\n📄 Description:\n{funny.get('description', '')}")
+            hashtags = funny.get('hashtags', [])
+            if hashtags:
+                content_parts.append(f"\n🏷️ Hashtags:\n{' '.join(hashtags)}")
+            content_parts.append(f"\n📢 CTA:\n{funny.get('cta', '')}")
+            content_parts.append(f"\n⏰ Best Time: {funny.get('best_time', 'N/A')}")
+        
+        # Set the text
+        full_content = "\n".join(content_parts)
+        self.social_display.setPlainText(full_content)
+        
+        # Switch to social tab to show result
+        # self.result_tabs.setCurrentIndex(4)  # Tab 5 is Social
+
+    def _display_thumbnail_design(self, thumbnail_data):
+        """Display thumbnail design specifications in the Thumbnail tab"""
+        if not thumbnail_data:
+            return
+        
+        # Format the content nicely
+        content_parts = []
+        
+        content_parts.append("=" * 60)
+        content_parts.append("🖼️ THUMBNAIL DESIGN SPECIFICATIONS")
+        content_parts.append("=" * 60)
+        
+        # Concept
+        if "concept" in thumbnail_data:
+            content_parts.append("\n💡 CONCEPT:")
+            content_parts.append(thumbnail_data["concept"])
+        
+        # Color Palette
+        if "color_palette" in thumbnail_data:
+            content_parts.append("\n\n🎨 COLOR PALETTE:")
+            for color in thumbnail_data["color_palette"]:
+                name = color.get("name", "Unknown")
+                hex_code = color.get("hex", "#000000")
+                usage = color.get("usage", "")
+                content_parts.append(f"  • {name}: {hex_code} - {usage}")
+        
+        # Typography
+        if "typography" in thumbnail_data:
+            typo = thumbnail_data["typography"]
+            content_parts.append("\n\n✍️ TYPOGRAPHY:")
+            content_parts.append(f"  • Main Text: {typo.get('main_text', '')}")
+            content_parts.append(f"  • Font Family: {typo.get('font_family', '')}")
+            content_parts.append(f"  • Font Size: {typo.get('font_size', '')}")
+            content_parts.append(f"  • Effects: {typo.get('effects', '')}")
+        
+        # Layout
+        if "layout" in thumbnail_data:
+            layout = thumbnail_data["layout"]
+            content_parts.append("\n\n📐 LAYOUT:")
+            content_parts.append(f"  • Composition: {layout.get('composition', '')}")
+            content_parts.append(f"  • Focal Point: {layout.get('focal_point', '')}")
+            content_parts.append(f"  • Rule of Thirds: {layout.get('rule_of_thirds', '')}")
+        
+        # Visual Elements
+        if "visual_elements" in thumbnail_data:
+            elements = thumbnail_data["visual_elements"]
+            content_parts.append("\n\n🎭 VISUAL ELEMENTS:")
+            content_parts.append(f"  • Subject: {elements.get('subject', '')}")
+            props = elements.get("props", [])
+            if props:
+                content_parts.append(f"  • Props: {', '.join(props)}")
+            content_parts.append(f"  • Background: {elements.get('background', '')}")
+            effects = elements.get("effects", [])
+            if effects:
+                content_parts.append(f"  • Effects: {', '.join(effects)}")
+        
+        # Style Guide
+        if "style_guide" in thumbnail_data:
+            content_parts.append("\n\n🎬 STYLE GUIDE:")
+            content_parts.append(thumbnail_data["style_guide"])
+        
+        # Set the text
+        full_content = "\n".join(content_parts)
+        self.thumbnail_display.setPlainText(full_content)
+        
+        # Switch to thumbnail tab to show result
+        # self.result_tabs.setCurrentIndex(3)  # Tab 4 is Thumbnail
 
     def _is_video_generating(self):
         """Check if video generation is currently in progress"""

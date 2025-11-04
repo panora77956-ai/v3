@@ -126,3 +126,43 @@ def get_all_prompts():
                 "system_prompt": prompt
             })
     return result
+
+
+def load_prompts():
+    """Load prompts from file (for hot reload)"""
+    global DOMAIN_PROMPTS
+    # Return current prompts - actual loading happens on module import
+    return DOMAIN_PROMPTS
+
+
+def reload_prompts():
+    """Reload prompts from the current file (hot reload)
+    
+    This function reloads the domain_prompts module to pick up
+    any changes made by the prompt updater service.
+    
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        import importlib
+        import sys
+        
+        # Get reference to this module
+        current_module = sys.modules[__name__]
+        
+        # Reload the module
+        importlib.reload(current_module)
+        
+        # Update global DOMAIN_PROMPTS from reloaded module
+        global DOMAIN_PROMPTS
+        DOMAIN_PROMPTS = current_module.DOMAIN_PROMPTS
+        
+        # Count domains and topics
+        domain_count = len(DOMAIN_PROMPTS)
+        topic_count = sum(len(topics) for topics in DOMAIN_PROMPTS.values())
+        
+        return True, f"✅ Reloaded! {domain_count} domains, {topic_count} topics"
+        
+    except Exception as e:
+        return False, f"❌ Reload failed: {str(e)}"

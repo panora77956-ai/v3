@@ -260,3 +260,179 @@ def generate_script(idea, style, duration_seconds, provider='Gemini 2.5', api_ke
     for i,d in enumerate(per):
         if i < len(res["scenes"]): res["scenes"][i]["duration"]=int(d)
     return res
+
+
+def generate_social_media(script_data, provider='Gemini 2.5', api_key=None):
+    """
+    Generate social media content in 3 different tones
+    
+    Args:
+        script_data: Script data dictionary with title, outline, screenplay
+        provider: LLM provider (Gemini/OpenAI)
+        api_key: Optional API key
+    
+    Returns:
+        Dictionary with 3 social media versions (casual, professional, funny)
+    """
+    gk, ok = _load_keys()
+    
+    # Extract key elements from script
+    title = script_data.get("title_vi") or script_data.get("title_tgt", "")
+    outline = script_data.get("outline_vi") or script_data.get("outline_tgt", "")
+    screenplay = script_data.get("screenplay_vi") or script_data.get("screenplay_tgt", "")
+    
+    # Build prompt
+    prompt = f"""Bạn là chuyên gia Social Media Marketing. Dựa trên kịch bản video sau, hãy tạo 3 phiên bản nội dung mạng xã hội với các tone khác nhau.
+
+**KỊCH BẢN VIDEO:**
+Tiêu đề: {title}
+Dàn ý: {outline}
+
+**YÊU CẦU:**
+Tạo 3 phiên bản post cho mạng xã hội, mỗi phiên bản bao gồm:
+1. Title (tiêu đề hấp dẫn)
+2. Description (mô tả chi tiết 2-3 câu)
+3. Hashtags (5-10 hashtags phù hợp)
+4. CTA (Call-to-action mạnh mẽ)
+5. Best posting time (thời gian đăng tối ưu)
+
+**3 PHIÊN BẢN:**
+- Version 1: Casual/Friendly (TikTok/YouTube Shorts) - Tone thân mật, gần gũi, emoji nhiều
+- Version 2: Professional (LinkedIn/Facebook) - Tone chuyên nghiệp, uy tín, giá trị cao
+- Version 3: Funny/Engaging (TikTok/Instagram Reels) - Tone hài hước, vui nhộn, viral
+
+Trả về JSON với format:
+{{
+  "casual": {{
+    "title": "...",
+    "description": "...",
+    "hashtags": ["#tag1", "#tag2", ...],
+    "cta": "...",
+    "best_time": "...",
+    "platform": "TikTok/YouTube Shorts"
+  }},
+  "professional": {{
+    "title": "...",
+    "description": "...",
+    "hashtags": ["#tag1", "#tag2", ...],
+    "cta": "...",
+    "best_time": "...",
+    "platform": "LinkedIn/Facebook"
+  }},
+  "funny": {{
+    "title": "...",
+    "description": "...",
+    "hashtags": ["#tag1", "#tag2", ...],
+    "cta": "...",
+    "best_time": "...",
+    "platform": "TikTok/Instagram Reels"
+  }}
+}}
+"""
+    
+    # Call LLM
+    if provider.lower().startswith("gemini"):
+        key = api_key or gk
+        if not key:
+            raise RuntimeError("Chưa cấu hình Google API Key cho Gemini.")
+        res = _call_gemini(prompt, key, "gemini-2.5-flash")
+    else:
+        key = api_key or ok
+        if not key:
+            raise RuntimeError("Chưa cấu hình OpenAI API Key cho GPT-4 Turbo.")
+        res = _call_openai(prompt, key, "gpt-4-turbo")
+    
+    return res
+
+
+def generate_thumbnail_design(script_data, provider='Gemini 2.5', api_key=None):
+    """
+    Generate detailed thumbnail design specifications
+    
+    Args:
+        script_data: Script data dictionary with title, outline, screenplay
+        provider: LLM provider (Gemini/OpenAI)
+        api_key: Optional API key
+    
+    Returns:
+        Dictionary with thumbnail design specifications
+    """
+    gk, ok = _load_keys()
+    
+    # Extract key elements from script
+    title = script_data.get("title_vi") or script_data.get("title_tgt", "")
+    outline = script_data.get("outline_vi") or script_data.get("outline_tgt", "")
+    character_bible = script_data.get("character_bible", [])
+    
+    # Build character summary
+    char_summary = ""
+    if character_bible:
+        char_summary = "Nhân vật chính:\n"
+        for char in character_bible[:3]:  # Top 3 characters
+            char_summary += f"- {char.get('name', 'Unknown')}: {char.get('visual_identity', 'N/A')}\n"
+    
+    # Build prompt
+    prompt = f"""Bạn là chuyên gia Thiết kế Thumbnail cho YouTube/TikTok. Dựa trên kịch bản video sau, hãy tạo specifications chi tiết cho thumbnail.
+
+**KỊCH BẢN VIDEO:**
+Tiêu đề: {title}
+Dàn ý: {outline}
+{char_summary}
+
+**YÊU CẦU:**
+Tạo specifications chi tiết cho thumbnail bao gồm:
+1. Concept (ý tưởng tổng thể)
+2. Color Palette (bảng màu với mã hex, 3-5 màu)
+3. Typography (text overlay, font, size, effects)
+4. Layout (composition, focal point, rule of thirds)
+5. Visual Elements (các yếu tố cần có: người, vật, background)
+6. Style Guide (phong cách tổng thể: photorealistic, cartoon, minimalist...)
+
+Thumbnail phải:
+- Nổi bật trong feed (high contrast, bold colors)
+- Gây tò mò (create curiosity gap)
+- Dễ đọc trên mobile (text lớn, rõ ràng)
+- Phù hợp với nội dung video
+
+Trả về JSON với format:
+{{
+  "concept": "Ý tưởng tổng thể cho thumbnail...",
+  "color_palette": [
+    {{"name": "Primary", "hex": "#FF5733", "usage": "Background"}},
+    {{"name": "Accent", "hex": "#33FF57", "usage": "Text highlight"}},
+    ...
+  ],
+  "typography": {{
+    "main_text": "Text chính trên thumbnail",
+    "font_family": "Tên font (ví dụ: Montserrat Bold)",
+    "font_size": "72-96pt",
+    "effects": "Drop shadow, outline, glow..."
+  }},
+  "layout": {{
+    "composition": "Mô tả cách bố trí (ví dụ: Character trái, text phải)",
+    "focal_point": "Điểm nhấn chính",
+    "rule_of_thirds": "Sử dụng rule of thirds như thế nào"
+  }},
+  "visual_elements": {{
+    "subject": "Nhân vật/Chủ thể chính",
+    "props": ["Vật dụng 1", "Vật dụng 2"],
+    "background": "Mô tả background",
+    "effects": ["Effect 1", "Effect 2"]
+  }},
+  "style_guide": "Phong cách tổng thể (ví dụ: Bold and dramatic with high contrast...)"
+}}
+"""
+    
+    # Call LLM
+    if provider.lower().startswith("gemini"):
+        key = api_key or gk
+        if not key:
+            raise RuntimeError("Chưa cấu hình Google API Key cho Gemini.")
+        res = _call_gemini(prompt, key, "gemini-2.5-flash")
+    else:
+        key = api_key or ok
+        if not key:
+            raise RuntimeError("Chưa cấu hình OpenAI API Key cho GPT-4 Turbo.")
+        res = _call_openai(prompt, key, "gpt-4-turbo")
+    
+    return res

@@ -116,6 +116,37 @@ class SettingsPanel(QWidget):
         self.rb_drive.toggled.connect(self._toggle_storage_fields)
         self._toggle_storage_fields()
 
+        # System Prompts Updater Section
+        prompts_group = QGroupBox('🔄 System Prompts Updater'); _decorate_group(prompts_group)
+        gp = QGridLayout(prompts_group); gp.setVerticalSpacing(6)
+        
+        # Description
+        lbl_desc = QLabel('Cập nhật system prompts từ Google Sheets mà không cần khởi động lại ứng dụng')
+        lbl_desc.setWordWrap(True)
+        lbl_desc.setFont(FONT_LABEL)
+        gp.addWidget(lbl_desc, 0, 0, 1, 3)
+        
+        # Google Sheets URL (read-only)
+        self.ed_sheets_url = _line('Google Sheets URL', bold=True)
+        self.ed_sheets_url.setText('https://docs.google.com/spreadsheets/d/1ohiL6xOBbjC7La2iUdkjrVjG4IEUnVWhI0fRoarD6P0')
+        self.ed_sheets_url.setReadOnly(True)
+        gp.addWidget(_lab('URL:'), 1, 0); gp.addWidget(self.ed_sheets_url, 1, 1, 1, 2)
+        
+        # Update button
+        self.btn_update_prompts = QPushButton('⬇️ Cập nhật System Prompts')
+        self.btn_update_prompts.setObjectName('btn_primary')
+        self.btn_update_prompts.setMinimumHeight(40)
+        self.btn_update_prompts.clicked.connect(self._update_system_prompts)
+        gp.addWidget(self.btn_update_prompts, 2, 0, 1, 1)
+        
+        # Status label
+        self.lb_prompts_status = QLabel('')
+        self.lb_prompts_status.setFont(FONT_LABEL)
+        self.lb_prompts_status.setWordWrap(True)
+        gp.addWidget(self.lb_prompts_status, 2, 1, 1, 2)
+        
+        root.addWidget(prompts_group)
+
         # Dòng 5: Lưu + Info app ở bên phải
         row5 = QHBoxLayout()
         self.btn_save = QPushButton('💾 Lưu cấu hình'); self.btn_save.setFont(FONT_BTN_BIG)
@@ -169,3 +200,57 @@ class SettingsPanel(QWidget):
         }
         cfg.save(st)
         self.lb_saved.setText('Đã lưu: ' + _ts())
+
+    def _update_system_prompts(self):
+        """Update system prompts from Google Sheets with hot reload"""
+        import os
+        from PyQt5.QtWidgets import QMessageBox
+        
+        # Show progress
+        self.lb_prompts_status.setText('⏳ Đang tải dữ liệu từ Google Sheets...')
+        self.btn_update_prompts.setEnabled(False)
+        
+        # Force UI update
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
+        
+        try:
+            from services.prompt_updater import update_prompts_file
+            
+            # Get path to domain_prompts.py
+            services_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services')
+            prompts_file = os.path.join(services_dir, 'domain_prompts.py')
+            
+            # Update file
+            success, message = update_prompts_file(prompts_file)
+            
+            if success:
+                # Hot reload the prompts
+                from services.domain_prompts import reload_prompts
+                reload_success, reload_msg = reload_prompts()
+                
+                if reload_success:
+                    self.lb_prompts_status.setText(f'{message}\n{reload_msg}\n🔥 Hot reload thành công!')
+                    QMessageBox.information(
+                        self,
+                        'Thành công',
+                        f'{message}\n\nCác prompts mới đã được tải và sẵn sàng sử dụng ngay!'
+                    )
+                else:
+                    self.lb_prompts_status.setText(f'{message}\n⚠️ {reload_msg}')
+                    QMessageBox.warning(
+                        self,
+                        'Cảnh báo',
+                        f'{message}\n\nNhưng reload không thành công: {reload_msg}\n\nVui lòng khởi động lại ứng dụng.'
+                    )
+            else:
+                self.lb_prompts_status.setText(message)
+                QMessageBox.critical(self, 'Lỗi', message)
+        
+        except Exception as e:
+            error_msg = f'❌ Lỗi không xác định: {str(e)}'
+            self.lb_prompts_status.setText(error_msg)
+            QMessageBox.critical(self, 'Lỗi', error_msg)
+        
+        finally:
+            self.btn_update_prompts.setEnabled(True)
