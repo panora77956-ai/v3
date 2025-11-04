@@ -16,8 +16,8 @@ from typing import Dict, Any, Optional
 # TTS PROVIDERS & VOICE OPTIONS
 # ============================================================================
 
-# TTS Provider configurations
-TTS_PROVIDERS = {
+# TTS Provider configurations (for advanced features)
+TTS_PROVIDER_CONFIGS = {
     "google": {
         "name": "Google Text-to-Speech",
         "name_short": "Google TTS",
@@ -31,6 +31,13 @@ TTS_PROVIDERS = {
         "icon": "🎙️",
         "supports_ssml": False,
         "supports_prosody": True
+    },
+    "openai": {
+        "name": "OpenAI Text-to-Speech",
+        "name_short": "OpenAI TTS",
+        "icon": "🤖",
+        "supports_ssml": False,
+        "supports_prosody": False
     }
 }
 
@@ -96,7 +103,7 @@ def get_provider_list():
     """
     return [
         (key, config["name_short"], config["icon"])
-        for key, config in TTS_PROVIDERS.items()
+        for key, config in TTS_PROVIDER_CONFIGS.items()
     ]
 
 def get_voices_for_provider(provider: str, language: str = "vi"):

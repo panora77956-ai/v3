@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
 )
 
 from utils import config as cfg
-from services.voice_options import get_style_list, get_style_info, SPEAKING_STYLES
+from services.voice_options import get_style_list, get_style_info, get_voices_for_provider, SPEAKING_STYLES
 
 from .text2video_panel_impl import _ASPECT_MAP, _LANGS, _VIDEO_MODELS, _Worker, build_prompt_json, get_model_key_from_display
 
@@ -1096,8 +1096,6 @@ class Text2VideoPane(QWidget):
     def _load_voices_for_provider(self):
         """Load available voices for the selected provider and language"""
         try:
-            from services.voice_options import get_voices_for_provider
-            
             # Get current provider and language
             provider = self.cb_tts_provider.currentData()
             language = self.cb_out_lang.currentData()
