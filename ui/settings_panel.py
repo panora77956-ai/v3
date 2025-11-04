@@ -55,7 +55,7 @@ class SettingsPanel(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(12,12,12,12)
-        root.setSpacing(8)  # Consistent 8px spacing between sections
+        root.setSpacing(4)  # Compact spacing between GroupBoxes
 
         # Section: Thông tin tài khoản
         acc = QGroupBox('Thông tin tài khoản'); _decorate_group(acc)
@@ -71,7 +71,7 @@ class SettingsPanel(QWidget):
         root.addWidget(acc)
 
         # Dòng 2: Labs + ProjectID | ElevenLabs + VoiceID
-        row2 = _QW(); grid2 = QGridLayout(row2); grid2.setHorizontalSpacing(12); grid2.setVerticalSpacing(8)
+        row2 = _QW(); grid2 = QGridLayout(row2); grid2.setHorizontalSpacing(12); grid2.setVerticalSpacing(4)
         labs_init = self.state.get('labs_tokens') or self.state.get('tokens') or []
         self.w_labs = KeyList(title='Google Labs Token (OAuth)', kind='labs', initial=labs_init)
         grid2.addWidget(self.w_labs, 0, 0, 1, 1)
@@ -86,24 +86,14 @@ class SettingsPanel(QWidget):
         root.addWidget(row2)
 
         # Dòng 3: Google API | OpenAI API
-        row3 = _QW(); grid3 = QGridLayout(row3); grid3.setHorizontalSpacing(12); grid3.setVerticalSpacing(8)
+        row3 = _QW(); grid3 = QGridLayout(row3); grid3.setHorizontalSpacing(12); grid3.setVerticalSpacing(4)
         g_list = self.state.get('google_api_keys') or ([] if not self.state.get('google_api_key') else [self.state.get('google_api_key')])
         self.w_google = KeyList(title='Google API Keys', kind='google', initial=g_list)
         self.w_openai = KeyList(title='OpenAI API Keys', kind='openai', initial=self.state.get('openai_api_keys') or [])
         grid3.addWidget(self.w_google, 0, 0, 1, 1); grid3.addWidget(self.w_openai, 0, 1, 1, 1)
         root.addWidget(row3)
 
-        # Dòng 4: Whisk Token | Download Directory (2 columns, 50/50)
-        row_combined = _QW()
-        grid_combined = QGridLayout(row_combined)
-        grid_combined.setHorizontalSpacing(12)
-
-        # Left column: Whisk Session Token
-        session_init = self.state.get('session_tokens') or []
-        self.w_session = KeyList(title='Whisk Session Token (Cookie)', kind='session', initial=session_init)
-        grid_combined.addWidget(self.w_session, 0, 0, 1, 1)
-
-        # Right column: Download directory group
+        # Dòng 4: ONLY Download Directory (full width, Whisk removed)
         st = QGroupBox('Thư mục tải về'); _decorate_group(st)
         gs = QGridLayout(st); gs.setVerticalSpacing(6)
         self.rb_local = QRadioButton('Lưu tại Local'); self.rb_drive = QRadioButton('Google Drive')
@@ -112,16 +102,15 @@ class SettingsPanel(QWidget):
         gs.addWidget(self.rb_local, 0, 0); gs.addWidget(self.rb_drive, 0, 1)
         self.ed_local = _line('Chọn thư mục...'); self.ed_local.setText(self.state.get('download_root',''))
         self.btn_browse = QPushButton('Chọn...'); self.btn_browse.setObjectName('btn_browse')
-        self.btn_browse.setMinimumHeight(32)  # Consistent button height
+        self.btn_browse.setMinimumHeight(32)
         self.btn_browse.clicked.connect(self._pick_dir)
         gs.addWidget(_lab('Đường dẫn (Local):'), 1, 0); gs.addWidget(self.ed_local, 1, 1); gs.addWidget(self.btn_browse, 1, 2)
         self.ed_gdrive = _line('Google Drive Folder ID'); self.ed_gdrive.setText(self.state.get('gdrive_folder_id',''))
         self.ed_oauth  = _line('Google Workspace OAuth Token'); self.ed_oauth.setText(self.state.get('google_workspace_oauth_token',''))
         gs.addWidget(_lab('Folder ID (Drive):'), 2, 0); gs.addWidget(self.ed_gdrive, 2, 1)
         gs.addWidget(_lab('OAuth Token:'), 2, 2); gs.addWidget(self.ed_oauth, 2, 3)
-        grid_combined.addWidget(st, 0, 1, 1, 1)
 
-        root.addWidget(row_combined)
+        root.addWidget(st)
 
         self.rb_local.toggled.connect(self._toggle_storage_fields)
         self.rb_drive.toggled.connect(self._toggle_storage_fields)
@@ -172,7 +161,6 @@ class SettingsPanel(QWidget):
             'google_workspace_oauth_token': self.ed_oauth.text().strip(),
             'labs_tokens': self.w_labs.get_keys(),
             'tokens': self.w_labs.get_keys(),
-            'session_tokens': self.w_session.get_keys(),
             'google_api_keys': self.w_google.get_keys(),
             'elevenlabs_api_keys': self.w_eleven.get_keys(),
             'openai_api_keys': self.w_openai.get_keys(),
