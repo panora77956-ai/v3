@@ -23,24 +23,47 @@ FONT_LABEL = QFont(); FONT_LABEL.setPixelSize(13)
 FONT_TEXT  = QFont("Courier New", 12); FONT_TEXT.setStyleHint(QFont.Monospace)
 
 def _ts(): return datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
-# PR#6: Part E #24 - No truncation, show full key
+def mask_sensitive_text(text: str, show_chars: int = 8) -> str:
+    """Mask sensitive text showing only first and last N characters
+    
+    Args:
+        text: Original text to mask
+        show_chars: Number of characters to show at start and end
+    
+    Returns:
+        Masked string like "12345678.....xyzabcde"
+    """
+    if not text or len(text) <= show_chars * 2:
+        return text
+    
+    return f"{text[:show_chars]}.....{text[-show_chars:]}"
+
 def _mask(s:str)->str:
-    return (s or '').strip()  # Return full key without truncation
+    """Mask API key for display"""
+    return mask_sensitive_text((s or '').strip(), show_chars=8)
 
 class _KeyItem(QWidget):
     def __init__(self, kind:str, key:str):
         super().__init__()
         self.kind=kind; self.key=(key or '').strip()
         h=QHBoxLayout(self); h.setContentsMargins(6,4,6,4); h.setSpacing(8)
-        # PR#6: Part E #24, #29 - Show full key with monospace font
+        # Show masked key with monospace font
         self.lb_key=QLabel(_mask(self.key))
         self.lb_key.setFont(FONT_TEXT)
         self.lb_key.setWordWrap(False)
         # Enable text selection for copying
         self.lb_key.setTextInteractionFlags(self.lb_key.textInteractionFlags() | Qt.TextSelectableByMouse)
+        # Store full key in property and show in tooltip
+        self.lb_key.setProperty("full_key", self.key)
+        self.lb_key.setToolTip(f"Full key (selectable): {self.key}")
+        
         self.lb_status=QLabel(''); self.lb_status.setFont(FONT_TEXT)
-        self.btn_test=QPushButton('Kiểm tra tất cả'); self.btn_test.setObjectName('btn_check_kiem')
-        self.btn_del=QPushButton('🗑'); self.btn_del.setObjectName('btn_delete_xoa'); self.btn_del.setFixedWidth(32)
+        self.btn_test=QPushButton('✓'); self.btn_test.setObjectName('btn_check_kiem')
+        self.btn_test.setFixedSize(32, 32)
+        self.btn_test.setToolTip('Kiểm tra key này')
+        self.btn_del=QPushButton('🗑'); self.btn_del.setObjectName('btn_delete_xoa')
+        self.btn_del.setFixedSize(32, 32)
+        self.btn_del.setToolTip('Xóa key này')
         h.addWidget(self.lb_key); h.addStretch(1); h.addWidget(self.btn_test); h.addWidget(self.lb_status); h.addWidget(self.btn_del)
         self.btn_test.clicked.connect(self._on_test)
     def _on_test(self):
@@ -51,25 +74,33 @@ class KeyList(QWidget):
     def __init__(self, *, title:str, kind:str, initial=None):
         super().__init__()
         self.kind=kind; initial=initial or []
-        v=QVBoxLayout(self); v.setContentsMargins(0,0,0,0); v.setSpacing(6)
+        v=QVBoxLayout(self); v.setContentsMargins(0,0,0,0); v.setSpacing(8)
         self.lb_title=QLabel(title); self.lb_title.setFont(FONT_TITLE)
         v.addWidget(self.lb_title)
-        # PR#6: Part E #25 - Set list height to 120px to show 3 keys, enable horizontal scrollbar
+        # Set list height to show ~3 keys (40px per row), with scroll support
         self.listw=QListWidget()
-        self.listw.setMinimumHeight(120)
-        self.listw.setMaximumHeight(120)
-        self.listw.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.listw.setMinimumHeight(120)  # Show at least 3 rows
+        self.listw.setMaximumHeight(160)  # Max ~4 rows before scrolling
+        self.listw.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.listw.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         v.addWidget(self.listw)
         row=QHBoxLayout()
-        # PR#6: Part E #33 - Add proper label
+        # Add input field and button with consistent height
         self.ed_new=QLineEdit(); self.ed_new.setFont(FONT_TEXT); self.ed_new.setPlaceholderText('Dán API Key của bạn vào đây')
-        self.btn_add=QPushButton('Thêm Key'); self.btn_add.setObjectName('btn_primary')
+        self.ed_new.setMinimumHeight(32)
+        self.btn_add=QPushButton('➕ Thêm Key'); self.btn_add.setObjectName('btn_primary')
+        self.btn_add.setMinimumHeight(32)
+        self.btn_add.setToolTip('Thêm API key mới')
         self.btn_add.clicked.connect(self._add_from_input)
         row.addWidget(self.ed_new); row.addWidget(self.btn_add); v.addLayout(row)
         actions=QHBoxLayout()
-        # PR#6: Part E #31-33 - Style buttons with orange and teal
-        self.btn_import=QPushButton('Nhập từ File (.txt)'); self.btn_import.setObjectName('btn_import_nhap')  # Orange
-        self.btn_test_all=QPushButton('Kiểm tra tất cả'); self.btn_test_all.setObjectName('btn_check_kiem')  # Teal
+        # Action buttons with consistent styling
+        self.btn_import=QPushButton('📁 Nhập từ File (.txt)'); self.btn_import.setObjectName('btn_import_nhap')  # Orange
+        self.btn_import.setMinimumHeight(32)
+        self.btn_import.setToolTip('Import keys from text file')
+        self.btn_test_all=QPushButton('✓ Kiểm tra tất cả'); self.btn_test_all.setObjectName('btn_check_kiem')  # Teal
+        self.btn_test_all.setMinimumHeight(32)
+        self.btn_test_all.setToolTip('Test all API keys')
         self.btn_import.clicked.connect(self._import_txt); self.btn_test_all.clicked.connect(self._test_all)
         actions.addWidget(self.btn_import); actions.addWidget(self.btn_test_all); actions.addStretch(1); v.addLayout(actions)
         self.set_keys(initial)
