@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import (
 from utils import config as cfg
 from services.voice_options import get_style_list, get_style_info, get_voices_for_provider, SPEAKING_STYLES
 
-from .text2video_panel_impl import _ASPECT_MAP, _LANGS, _VIDEO_MODELS, _Worker, build_prompt_json, get_model_key_from_display
+from .text2video_panel_impl import _ASPECT_MAP, _LANGS, _VIDEO_MODELS, _Worker, build_prompt_json, get_model_key_from_display, extract_location_context
 
 
 class CollapsibleGroupBox(QGroupBox):
@@ -687,13 +687,22 @@ class Text2VideoPane(QWidget):
         for r in range(self.table.rowCount()):
             vi = self.table.item(r,1).text() if self.table.item(r,1) else ""
             tgt= self.table.item(r,2).text() if self.table.item(r,2) else vi
+            
+            # Part E: Extract location context from scene data
+            location_ctx = None
+            if self._script_data and "scenes" in self._script_data:
+                scene_list = self._script_data["scenes"]
+                if r < len(scene_list):
+                    location_ctx = extract_location_context(scene_list[r])
 
             # Part D: Pass enhanced bible and voice settings to build_prompt_json
+            # Part E: Pass location context for consistency
             j=build_prompt_json(
                 r+1, vi, tgt, lang_code, ratio_key, style,
                 character_bible=character_bible_basic,
                 enhanced_bible=self._character_bible,
-                voice_settings=voice_settings
+                voice_settings=voice_settings,
+                location_context=location_ctx
             )
             scenes.append({"prompt": json.dumps(j, ensure_ascii=False, indent=2), "aspect": ratio})
 
@@ -781,11 +790,14 @@ class Text2VideoPane(QWidget):
                 character_bible_basic = data.get("character_bible", [])
                 # Get current voice settings
                 voice_settings = self.get_voice_settings()
+                # Part E: Extract location context from scene
+                location_ctx = extract_location_context(sc)
                 j=build_prompt_json(
                     i, sc.get("prompt_vi","" ), sc.get("prompt_tgt","" ), lang_code,
                     self.cb_ratio.currentText(), self.cb_style.currentText(),
                     character_bible=character_bible_basic,
-                    voice_settings=voice_settings
+                    voice_settings=voice_settings,
+                    location_context=location_ctx
                 )
                 if prdir:
                     with open(os.path.join(prdir, f"scene_{i:02d}.json"), "w", encoding="utf-8") as f:
@@ -824,7 +836,15 @@ class Text2VideoPane(QWidget):
         tgt= self.table.item(row,2).text() if self.table.item(row,2) else ""
         lang_code=self.cb_out_lang.currentData()
         voice_settings = self.get_voice_settings()
-        j=build_prompt_json(row+1, vi, tgt, lang_code, self.cb_ratio.currentText(), self.cb_style.currentText(), voice_settings=voice_settings)
+        
+        # Part E: Extract location context from scene data
+        location_ctx = None
+        if self._script_data and "scenes" in self._script_data:
+            scene_list = self._script_data["scenes"]
+            if row < len(scene_list):
+                location_ctx = extract_location_context(scene_list[row])
+        
+        j=build_prompt_json(row+1, vi, tgt, lang_code, self.cb_ratio.currentText(), self.cb_style.currentText(), voice_settings=voice_settings, location_context=location_ctx)
         from ui.prompt_viewer import PromptViewer
         dlg = PromptViewer(json.dumps(j, ensure_ascii=False, indent=2), None, self); dlg.exec_()
 
