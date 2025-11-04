@@ -16,8 +16,8 @@ from typing import Dict, Any, Optional
 # TTS PROVIDERS & VOICE OPTIONS
 # ============================================================================
 
-# TTS Provider configurations
-TTS_PROVIDERS = {
+# TTS Provider configurations (for advanced features)
+TTS_PROVIDER_CONFIGS = {
     "google": {
         "name": "Google Text-to-Speech",
         "name_short": "Google TTS",
@@ -31,6 +31,13 @@ TTS_PROVIDERS = {
         "icon": "🎙️",
         "supports_ssml": False,
         "supports_prosody": True
+    },
+    "openai": {
+        "name": "OpenAI Text-to-Speech",
+        "name_short": "OpenAI TTS",
+        "icon": "🤖",
+        "supports_ssml": False,
+        "supports_prosody": False
     }
 }
 
@@ -75,6 +82,16 @@ VOICE_OPTIONS = {
             {"id": "VR6AewLTigWG4xSOukaG", "name": "Arnold - Deep & Authoritative", "gender": "male", "description": "Deep, authoritative male voice"},
             {"id": "pNInz6obpgDQGcFmaJgB", "name": "Adam - Deep & Professional", "gender": "male", "description": "Deep, professional male voice"}
         ]
+    },
+    "openai": {
+        "all": [
+            {"id": "alloy", "name": "Alloy", "gender": "neutral", "description": "Neutral, balanced voice"},
+            {"id": "echo", "name": "Echo", "gender": "male", "description": "Male voice"},
+            {"id": "fable", "name": "Fable", "gender": "neutral", "description": "Expressive, storytelling voice"},
+            {"id": "onyx", "name": "Onyx", "gender": "male", "description": "Deep, authoritative male voice"},
+            {"id": "nova", "name": "Nova", "gender": "female", "description": "Energetic female voice"},
+            {"id": "shimmer", "name": "Shimmer", "gender": "female", "description": "Soft, gentle female voice"}
+        ]
     }
 }
 
@@ -86,21 +103,21 @@ def get_provider_list():
     """
     return [
         (key, config["name_short"], config["icon"])
-        for key, config in TTS_PROVIDERS.items()
+        for key, config in TTS_PROVIDER_CONFIGS.items()
     ]
 
 def get_voices_for_provider(provider: str, language: str = "vi"):
     """Get available voices for a provider and language
     
     Args:
-        provider: Provider key ("google" or "elevenlabs")
+        provider: Provider key ("google", "elevenlabs", or "openai")
         language: Language code (e.g., "vi", "en", "ja")
     
     Returns:
         List of voice dictionaries with id, name, gender, etc.
     """
-    if provider == "elevenlabs":
-        return VOICE_OPTIONS.get("elevenlabs", {}).get("all", [])
+    if provider in ("elevenlabs", "openai"):
+        return VOICE_OPTIONS.get(provider, {}).get("all", [])
     return VOICE_OPTIONS.get(provider, {}).get(language, [])
 
 def get_voice_info(provider: str, voice_id: str):
@@ -113,8 +130,8 @@ def get_voice_info(provider: str, voice_id: str):
     Returns:
         Dictionary with voice info, or None if not found
     """
-    if provider == "elevenlabs":
-        voices = VOICE_OPTIONS.get("elevenlabs", {}).get("all", [])
+    if provider in ("elevenlabs", "openai"):
+        voices = VOICE_OPTIONS.get(provider, {}).get("all", [])
     else:
         voices = []
         for lang_voices in VOICE_OPTIONS.get(provider, {}).values():

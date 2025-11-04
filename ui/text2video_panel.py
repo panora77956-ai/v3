@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
 )
 
 from utils import config as cfg
-from services.voice_options import get_style_list, get_style_info, SPEAKING_STYLES
+from services.voice_options import get_style_list, get_style_info, get_voices_for_provider, SPEAKING_STYLES
 
 from .text2video_panel_impl import _ASPECT_MAP, _LANGS, _VIDEO_MODELS, _Worker, build_prompt_json, get_model_key_from_display
 
@@ -536,6 +536,10 @@ class Text2VideoPane(QWidget):
         self.slider_rate.valueChanged.connect(self._on_rate_changed)
         self.slider_pitch.valueChanged.connect(self._on_pitch_changed)
         self.slider_expressiveness.valueChanged.connect(self._on_expressiveness_changed)
+        
+        # Voice provider and language change handlers
+        self.cb_tts_provider.currentIndexChanged.connect(self._load_voices_for_provider)
+        self.cb_out_lang.currentIndexChanged.connect(self._load_voices_for_provider)
 
         # Domain/Topic cascade
         self.cb_domain.currentIndexChanged.connect(self._on_domain_changed)
@@ -544,6 +548,9 @@ class Text2VideoPane(QWidget):
         # Keep worker reference
         self.worker = None
         self.thread = None
+        
+        # Load initial voices for default provider and language
+        self._load_voices_for_provider()
 
     def _fix_combobox_height(self, combobox):
         """Fix ComboBox text clipping by setting minimum height"""
@@ -1085,6 +1092,43 @@ class Text2VideoPane(QWidget):
                     # Preview removed - content not displayed
             except Exception as e:
                 self._append_log(f"[ERR] {e}")
+    
+    def _load_voices_for_provider(self):
+        """Load available voices for the selected provider and language"""
+        try:
+            # Get current provider and language
+            provider = self.cb_tts_provider.currentData()
+            language = self.cb_out_lang.currentData()
+            
+            if not provider:
+                return
+            
+            # Get voices for this provider/language combination
+            voices = get_voices_for_provider(provider, language)
+            
+            # Block signals to prevent triggering unwanted events
+            self.cb_voice.blockSignals(True)
+            
+            # Clear existing voices
+            self.cb_voice.clear()
+            
+            # Populate voice dropdown
+            for voice in voices:
+                display_name = voice.get("name", voice.get("id", "Unknown"))
+                voice_id = voice.get("id")
+                self.cb_voice.addItem(display_name, voice_id)
+            
+            # Re-enable signals
+            self.cb_voice.blockSignals(False)
+            
+            # Log success
+            if voices:
+                self._append_log(f"[INFO] Loaded {len(voices)} voices for {provider}")
+            else:
+                self._append_log(f"[WARN] No voices found for {provider} / {language}")
+                
+        except Exception as e:
+            self._append_log(f"[ERR] Failed to load voices: {e}")
     
     def get_voice_settings(self):
         """Get current voice settings for video generation

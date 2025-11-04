@@ -81,6 +81,40 @@ def get_system_prompt(domain, topic):
     return DOMAIN_PROMPTS.get(domain, {}).get(topic, "")
 
 
+def build_expert_intro(domain, topic, language="vi"):
+    """Build expert introduction text for script generation
+    
+    Args:
+        domain: Domain name (e.g., "GIÁO DỤC/HACKS")
+        topic: Topic name (e.g., "Mẹo Vặt (Life Hacks) Độc đáo")
+        language: Language code ("vi" or "en")
+    
+    Returns:
+        Formatted expert introduction text
+    """
+    system_prompt = get_system_prompt(domain, topic)
+    
+    if not system_prompt:
+        return ""
+    
+    if language == "vi":
+        intro = f"""Tôi là chuyên gia trong lĩnh vực {domain}, chuyên về {topic}. 
+Tôi đã nhận ý tưởng từ bạn và sẽ biến nó thành kịch bản và câu chuyện theo yêu cầu của bạn. 
+
+{system_prompt}
+
+Kịch bản như sau:"""
+    else:
+        intro = f"""I am an expert in {domain}, specializing in {topic}. 
+I have received your idea and will turn it into a script and story according to your requirements.
+
+{system_prompt}
+
+Script as follows:"""
+    
+    return intro
+
+
 def get_all_prompts():
     """Get all domain-topic-prompt combinations"""
     result = []
