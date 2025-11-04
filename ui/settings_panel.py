@@ -54,8 +54,8 @@ class SettingsPanel(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10,10,10,10)
-        root.setSpacing(6)
+        root.setContentsMargins(12,12,12,12)
+        root.setSpacing(8)  # Consistent 8px spacing between sections
 
         # Section: Thông tin tài khoản
         acc = QGroupBox('Thông tin tài khoản'); _decorate_group(acc)
@@ -71,7 +71,7 @@ class SettingsPanel(QWidget):
         root.addWidget(acc)
 
         # Dòng 2: Labs + ProjectID | ElevenLabs + VoiceID
-        row2 = _QW(); grid2 = QGridLayout(row2); grid2.setHorizontalSpacing(12); grid2.setVerticalSpacing(6)
+        row2 = _QW(); grid2 = QGridLayout(row2); grid2.setHorizontalSpacing(12); grid2.setVerticalSpacing(8)
         labs_init = self.state.get('labs_tokens') or self.state.get('tokens') or []
         self.w_labs = KeyList(title='Google Labs Token (OAuth)', kind='labs', initial=labs_init)
         grid2.addWidget(self.w_labs, 0, 0, 1, 1)
@@ -86,7 +86,7 @@ class SettingsPanel(QWidget):
         root.addWidget(row2)
 
         # Dòng 3: Google API | OpenAI API
-        row3 = _QW(); grid3 = QGridLayout(row3); grid3.setHorizontalSpacing(12); grid3.setVerticalSpacing(6)
+        row3 = _QW(); grid3 = QGridLayout(row3); grid3.setHorizontalSpacing(12); grid3.setVerticalSpacing(8)
         g_list = self.state.get('google_api_keys') or ([] if not self.state.get('google_api_key') else [self.state.get('google_api_key')])
         self.w_google = KeyList(title='Google API Keys', kind='google', initial=g_list)
         self.w_openai = KeyList(title='OpenAI API Keys', kind='openai', initial=self.state.get('openai_api_keys') or [])
@@ -112,6 +112,7 @@ class SettingsPanel(QWidget):
         gs.addWidget(self.rb_local, 0, 0); gs.addWidget(self.rb_drive, 0, 1)
         self.ed_local = _line('Chọn thư mục...'); self.ed_local.setText(self.state.get('download_root',''))
         self.btn_browse = QPushButton('Chọn...'); self.btn_browse.setObjectName('btn_browse')
+        self.btn_browse.setMinimumHeight(32)  # Consistent button height
         self.btn_browse.clicked.connect(self._pick_dir)
         gs.addWidget(_lab('Đường dẫn (Local):'), 1, 0); gs.addWidget(self.ed_local, 1, 1); gs.addWidget(self.btn_browse, 1, 2)
         self.ed_gdrive = _line('Google Drive Folder ID'); self.ed_gdrive.setText(self.state.get('gdrive_folder_id',''))
@@ -129,8 +130,8 @@ class SettingsPanel(QWidget):
         # Dòng 5: Lưu + Info app ở bên phải
         row5 = QHBoxLayout()
         self.btn_save = QPushButton('💾 Lưu cấu hình'); self.btn_save.setFont(FONT_BTN_BIG)
-        self.btn_save.setObjectName('btn_save')  # Green color
-        self.btn_save.setMinimumHeight(44)
+        self.btn_save.setObjectName('btn_save_luu')  # Green color (using both keywords for theme matching)
+        self.btn_save.setMinimumHeight(40)  # Consistent height
         self.lb_saved = QLabel(''); self.lb_saved.setFont(FONT_BTN_BIG)
         row5.addWidget(self.btn_save); row5.addWidget(self.lb_saved); row5.addStretch(1)
 
