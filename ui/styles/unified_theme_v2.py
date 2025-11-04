@@ -370,8 +370,8 @@ QGroupBox::title {
     subcontrol-position: top left;
     padding: 6px 12px;
     color: #E0E0E0;
-    font-weight: bold;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 16px;
     font-family: "Segoe UI", Arial, sans-serif;
 }
 
